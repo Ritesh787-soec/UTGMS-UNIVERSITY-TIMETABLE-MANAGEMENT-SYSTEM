@@ -1,0 +1,431 @@
+{
+  "info": {
+    "name": "UTGMS Backend",
+    "description": "Test collection for University Timetable Management System backend (Spring Boot). Run requests top to bottom inside each folder.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "departmentId", "value": "" },
+    { "key": "programId", "value": "" },
+    { "key": "semesterId", "value": "" },
+    { "key": "sectionId", "value": "" },
+    { "key": "facultyId", "value": "" },
+    { "key": "subjectId", "value": "" },
+    { "key": "subjectIdLab", "value": "" },
+    { "key": "roomId1", "value": "" },
+    { "key": "roomId2", "value": "" },
+    { "key": "entryId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@college.com\",\n  \"password\": \"admin123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"token\", data.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Master Data",
+      "item": [
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/departments",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"CSE\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"departmentId\", data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Program",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/programs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"B.Tech\",\n  \"department\": { \"id\": {{departmentId}} }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"programId\", data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Semester",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/semesters",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sem 5\",\n  \"program\": { \"id\": {{programId}} }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"semesterId\", data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Section",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/sections",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CSE-A\",\n  \"studentStrength\": 60,\n  \"semester\": { \"id\": {{semesterId}} }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"sectionId\", data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Faculty",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/faculties",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Smith\",\n  \"email\": \"smith@college.com\",\n  \"designation\": \"ASST_PROF\",\n  \"maxHoursPerWeek\": 20,\n  \"workingDays\": \"MON,TUE,WED,THU,FRI\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"facultyId\", data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Subject (Theory)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/subjects",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectName\": \"DBMS\",\n  \"subjectCode\": \"DBMS\",\n  \"type\": \"THEORY\",\n  \"theoryHrsPerWeek\": 4,\n  \"labHrsPerWeek\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"subjectId\", data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Subject (Lab)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/subjects",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectName\": \"DBMS Lab\",\n  \"subjectCode\": \"DBMS-L\",\n  \"type\": \"LAB\",\n  \"theoryHrsPerWeek\": 0,\n  \"labHrsPerWeek\": 2\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"subjectIdLab\", data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Room (Classroom)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/resources",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomNumber\": \"CR-101\",\n  \"type\": \"CLASSROOM\",\n  \"capacity\": 80,\n  \"isActive\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"roomId1\", data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Room (Lab)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/resources",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomNumber\": \"CL-01\",\n  \"type\": \"LAB\",\n  \"capacity\": 60,\n  \"isActive\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set(\"roomId2\", data.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Allocation",
+      "item": [
+        {
+          "name": "Create Allocation (Theory)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/allocations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facultyId\": {{facultyId}},\n  \"subjectId\": {{subjectId}},\n  \"sectionId\": {{sectionId}},\n  \"semesterId\": {{semesterId}},\n  \"session\": \"2026-ODD\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Allocation (Lab)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/allocations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facultyId\": {{facultyId}},\n  \"subjectId\": {{subjectIdLab}},\n  \"sectionId\": {{sectionId}},\n  \"semesterId\": {{semesterId}},\n  \"session\": \"2026-ODD\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Timetable",
+      "item": [
+        {
+          "name": "Generate Timetable",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/timetable/generate?semesterId={{semesterId}}"
+          }
+        },
+        {
+          "name": "Get Timetable by Section",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/timetable?sectionId={{sectionId}}"
+          }
+        },
+        {
+          "name": "Get Timetable by Faculty",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/timetable?facultyId={{facultyId}}"
+          }
+        },
+        {
+          "name": "Check Slot Availability",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/timetable/check?facultyId={{facultyId}}&roomId={{roomId1}}&day=WEDNESDAY&slot=4"
+          }
+        },
+        {
+          "name": "Lock Entry",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/timetable/entry/{{entryId}}/lock"
+          }
+        },
+        {
+          "name": "Move Entry (should fail if locked)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/timetable/entry/{{entryId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dayOfWeek\": \"TUESDAY\",\n  \"slotNumber\": 3\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Versioning",
+      "item": [
+        {
+          "name": "Save Version",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/timetable/version?sectionId={{sectionId}}"
+          }
+        },
+        {
+          "name": "Get Version History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/timetable/version?sectionId={{sectionId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Reports",
+      "item": [
+        {
+          "name": "Workload Report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/reports/workload"
+          }
+        },
+        {
+          "name": "Room Utilisation Report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/reports/rooms"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Export",
+      "item": [
+        {
+          "name": "Download PDF",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/export/pdf?sectionId={{sectionId}}"
+          }
+        },
+        {
+          "name": "Download Excel",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/export/excel?sectionId={{sectionId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Users (Admin only)",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coordinator One\",\n  \"email\": \"coord@college.com\",\n  \"password\": \"coord123\",\n  \"role\": \"COORDINATOR\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users"
+          }
+        }
+      ]
+    }
+  ]
+}
