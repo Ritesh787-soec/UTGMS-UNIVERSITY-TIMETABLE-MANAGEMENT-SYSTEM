@@ -1,5 +1,5 @@
 // src/main/java/com/college/timetable/repository/AllocationRepository.java
-// RENAMED from SubjectAllocationRepository -- delete the old file
+
 package com.college.timetable.repository;
 
 import com.college.timetable.model.SubjectAllocation;
