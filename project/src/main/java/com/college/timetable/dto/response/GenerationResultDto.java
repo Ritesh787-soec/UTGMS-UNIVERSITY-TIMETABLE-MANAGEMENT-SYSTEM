@@ -1,5 +1,5 @@
 // src/main/java/com/college/timetable/dto/GenerationResultDto.java
-package com.college.timetable.dto;
+package com.college.timetable.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

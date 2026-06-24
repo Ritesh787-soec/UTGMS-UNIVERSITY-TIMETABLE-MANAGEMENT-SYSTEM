@@ -3,11 +3,21 @@ package com.college.timetable.service;
 
 import com.college.timetable.model.TimetableEntry;
 import com.college.timetable.repository.TimetableEntryRepository;
-import com.lowagie.text.*;
+
+// Explicit PDF Imports (Avoids wildcard star collision)
+import com.lowagie.text.Document;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
-import org.apache.poi.ss.usermodel.*;
+
+// Explicit Excel Imports 
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +27,10 @@ import java.util.List;
 @Service
 public class TimetableExportService {
 
-    @Autowired private TimetableEntryRepository entryRepo;
+    @Autowired
+    private TimetableEntryRepository entryRepo;
 
-    private static final String[] DAYS = {"MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"};
+    private static final String[] DAYS = { "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY" };
     private static final int TOTAL_SLOTS = 8;
 
     public byte[] generatePdf(Long sectionId) throws Exception {
@@ -35,7 +46,8 @@ public class TimetableExportService {
 
         PdfPTable table = new PdfPTable(DAYS.length + 1);
         table.addCell("Slot");
-        for (String day : DAYS) table.addCell(day);
+        for (String day : DAYS)
+            table.addCell(day);
 
         for (int slot = 1; slot <= TOTAL_SLOTS; slot++) {
             table.addCell("Slot " + slot);
@@ -62,7 +74,7 @@ public class TimetableExportService {
         Sheet sheet = workbook.createSheet("Timetable");
 
         CellStyle headerStyle = workbook.createCellStyle();
-        Font font = workbook.createFont();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
         font.setBold(true);
         headerStyle.setFont(font);
 
@@ -89,7 +101,8 @@ public class TimetableExportService {
             }
         }
 
-        for (int i = 0; i <= DAYS.length; i++) sheet.autoSizeColumn(i);
+        for (int i = 0; i <= DAYS.length; i++)
+            sheet.autoSizeColumn(i);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         workbook.write(out);

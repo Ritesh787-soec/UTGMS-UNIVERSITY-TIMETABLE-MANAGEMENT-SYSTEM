@@ -1,4 +1,3 @@
-public // src/main/java/com/college/timetable/dto/request/MoveEntryRequest.java
 package com.college.timetable.dto.request;
 
 import lombok.Data;
@@ -7,6 +6,4 @@ import lombok.Data;
 public class MoveEntryRequest {
     private String newDay;
     private int newSlot;
-} {
-    
 }

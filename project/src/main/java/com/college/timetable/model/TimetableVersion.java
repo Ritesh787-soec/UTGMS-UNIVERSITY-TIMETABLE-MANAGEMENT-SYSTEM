@@ -9,15 +9,21 @@ import java.time.LocalDateTime;
 @Entity
 @Data
 public class TimetableVersion {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long semesterId;
+    private Long sectionId;
     private String session;
     private int versionNumber;
 
     @Column(columnDefinition = "TEXT")
-    private String dataJson;
+    private String snapshotJson;
 
     private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

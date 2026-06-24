@@ -1,7 +1,6 @@
-// src/main/java/com/college/timetable/controller/ExportController.java
 package com.college.timetable.controller;
 
-import com.college.timetable.service.ExportService;
+import com.college.timetable.service.TimetableExportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -13,11 +12,13 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/api/export")
 public class ExportController {
-    private final ExportService exportService;
+
+    private final TimetableExportService exportService;
 
     @GetMapping("/pdf")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<byte[]> exportPdf(@RequestParam Long sectionId) {
+    // ─── ADDED THROWS EXCEPTION HERE ───
+    public ResponseEntity<byte[]> exportPdf(@RequestParam Long sectionId) throws Exception {
         byte[] pdf = exportService.generatePdf(sectionId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=timetable.pdf")
@@ -27,11 +28,13 @@ public class ExportController {
 
     @GetMapping("/excel")
     @PreAuthorize("hasRole('COORDINATOR')")
-    public ResponseEntity<byte[]> exportExcel(@RequestParam Long sectionId) {
+    // ─── ADDED THROWS EXCEPTION HERE ───
+    public ResponseEntity<byte[]> exportExcel(@RequestParam Long sectionId) throws Exception {
         byte[] excel = exportService.generateExcel(sectionId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=timetable.xlsx")
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentType(
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(excel);
     }
 }

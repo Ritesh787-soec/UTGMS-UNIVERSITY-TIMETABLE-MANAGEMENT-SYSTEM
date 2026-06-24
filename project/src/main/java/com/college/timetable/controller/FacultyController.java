@@ -2,14 +2,11 @@
 package com.college.timetable.controller;
 
 import com.college.timetable.dto.request.FacultyRequest;
-import com.college.timetable.dto.response.WorkloadSummaryDTO;
-import com.college.timetable.model.Faculty;
 import com.college.timetable.service.FacultyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -19,29 +16,39 @@ public class FacultyController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','COORDINATOR')")
-    public List<Faculty> getAll() { return facultyService.getAll(); }
+    public ResponseEntity<?> getAll() {
+        // Returns a wildcard collection response to safely map the service items
+        return ResponseEntity.ok(facultyService.getAll());
+    }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','COORDINATOR')")
-    public Faculty getById(@PathVariable Long id) { return facultyService.getById(id); }
+    public ResponseEntity<Object> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(facultyService.getById(id));
+    }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public Faculty create(@RequestBody FacultyRequest request) { return facultyService.create(request); }
+    public ResponseEntity<Object> create(@RequestBody FacultyRequest request) {
+        return ResponseEntity.ok(facultyService.create(request));
+    }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Faculty update(@PathVariable Long id, @RequestBody FacultyRequest request) {
-        return facultyService.update(id, request);
+    public ResponseEntity<Object> update(@PathVariable Long id, @RequestBody FacultyRequest request) {
+        return ResponseEntity.ok(facultyService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void delete(@PathVariable Long id) { facultyService.delete(id); }
+    public void delete(@PathVariable Long id) {
+        facultyService.delete(id);
+    }
 
     @GetMapping("/{id}/workload")
     @PreAuthorize("hasAnyRole('ADMIN','COORDINATOR')")
-    public WorkloadSummaryDTO getWorkload(@PathVariable Long id, @RequestParam String session) {
-        return facultyService.getWorkloadSummary(id, session);
+    public ResponseEntity<Object> getWorkload(@PathVariable Long id, @RequestParam String session) {
+        // Cleanly bridges the workload response with the updated service layer
+        return ResponseEntity.ok(facultyService.getWorkloadSummary(id, session));
     }
 }

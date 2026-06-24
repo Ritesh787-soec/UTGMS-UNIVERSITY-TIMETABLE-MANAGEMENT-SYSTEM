@@ -8,6 +8,7 @@ import com.college.timetable.repository.FacultyRepository;
 import com.college.timetable.repository.ResourceRepository;
 import com.college.timetable.repository.TimetableEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,16 +20,19 @@ import java.util.Map;
 @RequestMapping("/api/reports")
 public class ReportController {
 
-    @Autowired private FacultyRepository facultyRepo;
-    @Autowired private ResourceRepository resourceRepo;
-    @Autowired private TimetableEntryRepository entryRepo;
+    @Autowired
+    private FacultyRepository facultyRepo;
+    @Autowired
+    private ResourceRepository resourceRepo;
+    @Autowired
+    private TimetableEntryRepository entryRepo;
 
     private static final int WORKING_DAYS = 6;
     private static final int SLOTS_PER_DAY = 8;
 
     @GetMapping("/workload")
     @PreAuthorize("hasAnyRole('ADMIN','COORDINATOR')")
-    public List<WorkloadDto> workloadReport() {
+    public ResponseEntity<List<WorkloadDto>> workloadReport() {
         List<Faculty> facultyList = facultyRepo.findAll();
         List<WorkloadDto> report = new ArrayList<>();
 
@@ -40,12 +44,12 @@ public class ReportController {
             report.add(new WorkloadDto(faculty.getName(), faculty.getDesignation(),
                     assignedHours, maxHours, Math.round(utilization * 100.0) / 100.0));
         }
-        return report;
+        return ResponseEntity.ok(report);
     }
 
     @GetMapping("/rooms")
     @PreAuthorize("hasAnyRole('ADMIN','COORDINATOR')")
-    public List<Map<String, Object>> roomUtilisationReport() {
+    public ResponseEntity<List<Map<String, Object>>> roomUtilisationReport() {
         List<Resource> rooms = resourceRepo.findAll();
         List<Map<String, Object>> report = new ArrayList<>();
         int totalSlots = WORKING_DAYS * SLOTS_PER_DAY;
@@ -60,9 +64,8 @@ public class ReportController {
                     "capacity", room.getCapacity(),
                     "occupiedSlots", occupied,
                     "totalSlots", totalSlots,
-                    "utilization", Math.round(utilization * 100.0) / 100.0
-            ));
+                    "utilization", Math.round(utilization * 100.0) / 100.0));
         }
-        return report;
+        return ResponseEntity.ok(report);
     }
 }

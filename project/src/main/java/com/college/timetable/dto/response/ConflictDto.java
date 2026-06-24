@@ -1,15 +1,14 @@
-// src/main/java/com/college/timetable/dto/response/GenerationResultDto.java
 package com.college.timetable.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import java.util.List;
+import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
-public class GenerationResultDto {
-    private String status;
-    private int totalPlaced;
-    private int conflictsFound;
-    private List<ConflictDto> conflicts;
+@NoArgsConstructor
+public class ConflictDto {
+    private String subjectName;
+    private String sectionName;
+    private String conflictMessage;
 }
