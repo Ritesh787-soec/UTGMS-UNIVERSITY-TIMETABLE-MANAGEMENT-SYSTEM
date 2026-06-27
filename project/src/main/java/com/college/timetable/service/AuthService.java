@@ -1,13 +1,34 @@
 package com.college.timetable.service;
 
-import org.springframework.stereotype.Service;
 import com.college.timetable.dto.request.LoginRequest;
+import com.college.timetable.model.User;
+import com.college.timetable.repository.UserRepository;
+import com.college.timetable.security.JwtUtil;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+    }
+
     public String login(LoginRequest request) {
-        return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_token_for_testing";
-    } // Return your LoginResponse DTO structure here
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+        
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid email or password");
+        }
+        
+        return jwtUtil.generateToken(user.getEmail(), user.getRole());
+    }
 
     public Object register(Object registerRequest) {
         return registerRequest;

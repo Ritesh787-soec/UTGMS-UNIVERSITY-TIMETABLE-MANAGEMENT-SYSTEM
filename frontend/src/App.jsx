@@ -1,14 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  BookOpen, Users, Book, Layers, Cpu, HelpCircle, FileText, 
+  BookOpen, Users, User, Eye, EyeOff, Book, Layers, Cpu, HelpCircle, FileText, 
   Sun, Moon, Shield, Bell, Settings, Search, CheckCircle, 
   XCircle, Plus, Edit, Trash, Lock, Unlock, ArrowLeftRight, 
   Download, AlertTriangle, RefreshCw, LogIn, LogOut, Check, ArrowRight
 } from 'lucide-react';
 
 // ==========================================
-// MOCK DATASETS & STORAGE
+// API INTEGRATION & MOCK DATASETS
 // ==========================================
+
+const API_BASE_URL = 'http://localhost:8080/api';
+
+function decodeJwt(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (err) {
+    console.error("JWT Decode failed:", err);
+    return null;
+  }
+}
+
+async function apiCall(endpoint, method = 'GET', body = null) {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const config = {
+    method,
+    headers,
+  };
+  if (body) {
+    config.body = JSON.stringify(body);
+  }
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  if (!response.ok) {
+    throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+  }
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return response.json();
+  }
+  return response.text();
+}
+
 
 const INITIAL_USERS = [
   { id: 1, email: "admin@college.com", name: "Admin User", role: "ADMIN" },
@@ -108,6 +151,46 @@ export default function App() {
   const [timetableEntries, setTimetableEntries] = useState(INITIAL_TIMETABLE_ENTRIES);
   const [requests, setRequests] = useState(INITIAL_REQUESTS);
   const [logs, setLogs] = useState(INITIAL_LOGS);
+  const [offlineMode, setOfflineMode] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const depts = await apiCall('/departments');
+      if (Array.isArray(depts)) setDepartments(depts);
+      
+      const facs = await apiCall('/faculties');
+      if (Array.isArray(facs)) setFaculties(facs);
+      
+      const subs = await apiCall('/subjects');
+      if (Array.isArray(subs)) setSubjects(subs);
+      
+      const resList = await apiCall('/resources');
+      if (Array.isArray(resList)) setResources(resList);
+      
+      try {
+        const entries = await apiCall('/timetable?sectionId=1');
+        if (Array.isArray(entries)) setTimetableEntries(entries);
+      } catch (e) {
+        console.warn("Timetable entries failed to load via API:", e.message);
+      }
+      
+      setOfflineMode(false);
+    } catch (err) {
+      console.warn("Backend API not reachable. Falling back to offline mock mode:", err.message);
+      setOfflineMode(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser]);
+
 
   // UI state variables
   const [selectedCell, setSelectedCell] = useState(null);
@@ -117,6 +200,19 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [captchaCode, setCaptchaCode] = useState("PNINEN");
+  const [captchaInput, setCaptchaInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const generateCaptcha = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaCode(code);
+  };
+
   
   // Generation simulator state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -138,23 +234,45 @@ export default function App() {
   }, [theme]);
 
   // Handle Authentication
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const user = INITIAL_USERS.find(u => u.email === loginEmail);
-    if (user && loginPassword === "admin123") {
-      setCurrentUser(user);
-      setLoginError("");
-      logActivity(user.email, "User Login", `Logged in successfully with role ${user.role}`);
-    } else if (user && loginPassword === "coord123" && user.role === "COORDINATOR") {
-      setCurrentUser(user);
-      setLoginError("");
-      logActivity(user.email, "User Login", `Logged in successfully with role ${user.role}`);
-    } else if (user && loginPassword === "faculty123" && user.role === "FACULTY") {
-      setCurrentUser(user);
-      setLoginError("");
-      logActivity(user.email, "User Login", `Logged in successfully with role ${user.role}`);
-    } else {
-      setLoginError("Invalid email or password credentials.");
+    setLoginError("");
+    
+    if (captchaInput.toUpperCase() !== captchaCode.toUpperCase()) {
+      setLoginError("Invalid Captcha code entered.");
+      generateCaptcha();
+      return;
+    }
+
+    try {
+      const token = await apiCall('/auth/login', 'POST', { email: loginEmail, password: loginPassword });
+      localStorage.setItem('token', token);
+      const payload = decodeJwt(token);
+      if (payload) {
+        const user = {
+          email: payload.sub,
+          role: payload.role,
+          name: payload.sub.split('@')[0]
+        };
+        setCurrentUser(user);
+        logActivity(user.email, "User Login", `Logged in successfully via REST API with role ${user.role}`);
+      } else {
+        throw new Error("Could not decode token payload");
+      }
+    } catch (err) {
+      console.warn("Login API failed. Trying offline credentials fallback:", err.message);
+      const user = INITIAL_USERS.find(u => u.email === loginEmail);
+      if (user && (
+        (loginPassword === "admin123" && user.role === "ADMIN") ||
+        (loginPassword === "coord123" && user.role === "COORDINATOR") ||
+        (loginPassword === "faculty123" && user.role === "FACULTY")
+      )) {
+        setCurrentUser(user);
+        setOfflineMode(true);
+        logActivity(user.email, "User Login", `Logged in successfully (Offline Mock Mode)`);
+      } else {
+        setLoginError("Invalid email or password credentials.");
+      }
     }
   };
 
@@ -162,10 +280,12 @@ export default function App() {
     if (currentUser) {
       logActivity(currentUser.email, "User Logout", "Logged out from system");
     }
+    localStorage.removeItem('token');
     setCurrentUser(null);
     setLoginEmail("");
     setLoginPassword("");
   };
+
 
   const logActivity = (user, action, desc) => {
     const newLog = {
@@ -299,32 +419,148 @@ export default function App() {
   };
 
   // CRUD handlers
-  const handleCrudSubmit = (e) => {
+  const handleCrudSubmit = async (e) => {
     e.preventDefault();
     if (formType === 'dept') {
-      setDepartments(prev => [...prev, { id: Date.now(), name: formData.name, code: formData.code }]);
+      if (!offlineMode) {
+        try {
+          const res = await apiCall('/departments', 'POST', { name: formData.name, code: formData.code });
+          setDepartments(prev => [...prev, res]);
+        } catch (err) {
+          console.error("API Call failed:", err);
+          setDepartments(prev => [...prev, { id: Date.now(), name: formData.name, code: formData.code }]);
+        }
+      } else {
+        setDepartments(prev => [...prev, { id: Date.now(), name: formData.name, code: formData.code }]);
+      }
       logActivity(currentUser.email, "Create Department", `Created department ${formData.code}`);
     } else if (formType === 'program') {
-      setPrograms(prev => [...prev, { id: Date.now(), name: formData.name, code: formData.code, deptId: parseInt(formData.deptId) }]);
+      if (!offlineMode) {
+        try {
+          const res = await apiCall('/programs', 'POST', { name: formData.name, code: formData.code, departmentId: parseInt(formData.deptId) });
+          setPrograms(prev => [...prev, res]);
+        } catch (err) {
+          console.error("API Call failed:", err);
+          setPrograms(prev => [...prev, { id: Date.now(), name: formData.name, code: formData.code, deptId: parseInt(formData.deptId) }]);
+        }
+      } else {
+        setPrograms(prev => [...prev, { id: Date.now(), name: formData.name, code: formData.code, deptId: parseInt(formData.deptId) }]);
+      }
       logActivity(currentUser.email, "Create Program", `Created program ${formData.code}`);
     } else if (formType === 'section') {
-      setSections(prev => [...prev, { id: Date.now(), name: formData.name, strength: parseInt(formData.strength), semId: 1 }]);
+      if (!offlineMode) {
+        try {
+          const res = await apiCall('/sections', 'POST', { name: formData.name, studentStrength: parseInt(formData.strength), semesterId: 1 });
+          setSections(prev => [...prev, res]);
+        } catch (err) {
+          console.error("API Call failed:", err);
+          setSections(prev => [...prev, { id: Date.now(), name: formData.name, strength: parseInt(formData.strength), semId: 1 }]);
+        }
+      } else {
+        setSections(prev => [...prev, { id: Date.now(), name: formData.name, strength: parseInt(formData.strength), semId: 1 }]);
+      }
       logActivity(currentUser.email, "Create Section", `Created section ${formData.name}`);
     } else if (formType === 'faculty') {
-      setFaculties(prev => [...prev, { id: Date.now(), ...formData, workload: parseInt(formData.workload || 16) }]);
+      if (!offlineMode) {
+        try {
+          const res = await apiCall('/faculties', 'POST', {
+            name: formData.name,
+            email: formData.email,
+            designation: formData.designation,
+            workingDays: String(formData.days || 5),
+            maxHoursPerWeek: parseInt(formData.workload || 16)
+          });
+          setFaculties(prev => [...prev, {
+            id: res.id || Date.now(),
+            name: res.name || formData.name,
+            code: res.employeeCode || "EMP-" + String(res.id || Date.now()),
+            designation: res.designation || formData.designation,
+            email: res.email || formData.email,
+            workload: res.workloadHours || parseInt(formData.workload || 16),
+            days: res.workingDays || parseInt(formData.days || 5),
+            time: formData.time || "09:00 - 17:00"
+          }]);
+        } catch (err) {
+          console.error("API Call failed:", err);
+          setFaculties(prev => [...prev, { id: Date.now(), ...formData, workload: parseInt(formData.workload || 16) }]);
+        }
+      } else {
+        setFaculties(prev => [...prev, { id: Date.now(), ...formData, workload: parseInt(formData.workload || 16) }]);
+      }
       logActivity(currentUser.email, "Create Faculty", `Added faculty ${formData.name}`);
     } else if (formType === 'subject') {
-      setSubjects(prev => [...prev, { id: Date.now(), ...formData, theoryHrs: parseInt(formData.theoryHrs || 3), labHrs: parseInt(formData.labHrs || 0) }]);
+      if (!offlineMode) {
+        try {
+          const res = await apiCall('/subjects', 'POST', {
+            subjectName: formData.name,
+            subjectCode: formData.code,
+            type: formData.type || "THEORY",
+            theoryHrsPerWeek: parseInt(formData.theoryHrs || 3),
+            labHrsPerWeek: parseInt(formData.labHrs || 0)
+          });
+          setSubjects(prev => [...prev, {
+            id: res.id || Date.now(),
+            name: res.subjectName || formData.name,
+            code: res.subjectCode || formData.code,
+            type: res.type || formData.type,
+            theoryHrs: res.theoryHrsPerWeek || parseInt(formData.theoryHrs || 3),
+            labHrs: res.labHrsPerWeek || parseInt(formData.labHrs || 0)
+          }]);
+        } catch (err) {
+          console.error("API Call failed:", err);
+          setSubjects(prev => [...prev, { id: Date.now(), ...formData, theoryHrs: parseInt(formData.theoryHrs || 3), labHrs: parseInt(formData.labHrs || 0) }]);
+        }
+      } else {
+        setSubjects(prev => [...prev, { id: Date.now(), ...formData, theoryHrs: parseInt(formData.theoryHrs || 3), labHrs: parseInt(formData.labHrs || 0) }]);
+      }
       logActivity(currentUser.email, "Create Subject", `Added subject ${formData.name}`);
     } else if (formType === 'resource') {
-      setResources(prev => [...prev, { id: Date.now(), ...formData, capacity: parseInt(formData.capacity || 60), status: "Active" }]);
+      if (!offlineMode) {
+        try {
+          const res = await apiCall('/resources', 'POST', {
+            roomNumber: formData.name,
+            type: formData.type || "CLASSROOM",
+            capacity: parseInt(formData.capacity || 60)
+          });
+          setResources(prev => [...prev, {
+            id: res.id || Date.now(),
+            name: res.roomNumber || formData.name,
+            type: res.type || formData.type,
+            capacity: res.capacity || parseInt(formData.capacity || 60),
+            status: "Active"
+          }]);
+        } catch (err) {
+          console.error("API Call failed:", err);
+          setResources(prev => [...prev, { id: Date.now(), ...formData, capacity: parseInt(formData.capacity || 60), status: "Active" }]);
+        }
+      } else {
+        setResources(prev => [...prev, { id: Date.now(), ...formData, capacity: parseInt(formData.capacity || 60), status: "Active" }]);
+      }
       logActivity(currentUser.email, "Create Resource", `Added room ${formData.name}`);
     }
     setIsFormOpen(false);
     setFormData({});
   };
 
-  const deleteEntity = (type, id) => {
+  const deleteEntity = async (type, id) => {
+    if (!offlineMode) {
+      try {
+        let endpoint = '';
+        if (type === 'dept') endpoint = `/departments/${id}`;
+        else if (type === 'program') endpoint = `/programs/${id}`;
+        else if (type === 'section') endpoint = `/sections/${id}`;
+        else if (type === 'faculty') endpoint = `/faculties/${id}`;
+        else if (type === 'subject') endpoint = `/subjects/${id}`;
+        else if (type === 'resource') endpoint = `/resources/${id}`;
+        
+        if (endpoint) {
+          await apiCall(endpoint, 'DELETE');
+        }
+      } catch (err) {
+        console.error("API delete call failed:", err.message);
+      }
+    }
+    
     if (type === 'dept') setDepartments(prev => prev.filter(x => x.id !== id));
     if (type === 'program') setPrograms(prev => prev.filter(x => x.id !== id));
     if (type === 'section') setSections(prev => prev.filter(x => x.id !== id));
@@ -333,6 +569,7 @@ export default function App() {
     if (type === 'resource') setResources(prev => prev.filter(x => x.id !== id));
     logActivity(currentUser.email, "Delete Entity", `Removed ${type} with ID ${id}`);
   };
+
 
   // Helper selectors
   const getCellContent = (day, slot) => {
@@ -345,57 +582,122 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <div className="login-container">
-        <div className="login-card">
-          <div className="login-logo">
-            <BookOpen size={36} />
-            <span>UniSched UTGMS</span>
+      <div className="geu-login-container">
+        <div className="geu-login-card">
+          {/* Header with Graphic Era logo */}
+          <div className="geu-login-header">
+            <div className="geu-logo-emblem">
+              <svg width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="23" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1"/>
+                <circle cx="24" cy="24" r="19" fill="#1e293b"/>
+                <circle cx="24" cy="24" r="14" fill="#8a1538"/>
+                <path d="M24 15C19 15 17 21 17 25C17 31 22 33 24 33C26 33 31 31 31 25C31 21 29 15 24 15Z" fill="#ffffff"/>
+                <circle cx="24" cy="24" r="5" fill="#8a1538"/>
+              </svg>
+            </div>
+            <div className="geu-logo-text">
+              <span className="geu-logo-title">
+                <span className="red">Graphic</span>
+                <span className="dark">Era</span>
+              </span>
+              <span className="geu-logo-subtitle">Deemed to be University</span>
+            </div>
           </div>
-          <div className="login-header">
-            <h2 className="login-title">Sign In to Dashboard</h2>
-            <p className="login-subtitle">Enter your department credentials below</p>
-          </div>
-          
-          {loginError && <div className="login-error">{loginError}</div>}
-          
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="form-group">
-              <label>Default Test Accounts (Click one to autofill):</label>
+
+          <div className="geu-login-body">
+            {/* Quick Autofill Role Selector */}
+            <div className="geu-autofill-section">
+              <div className="geu-autofill-title">Select Role for Quick Autofill:</div>
               <div className="role-select-grid">
                 <div className={`role-pill ${loginEmail === 'admin@college.com' ? 'selected' : ''}`} onClick={() => { setLoginEmail('admin@college.com'); setLoginPassword('admin123'); }}>Admin</div>
                 <div className={`role-pill ${loginEmail === 'coordinator@college.com' ? 'selected' : ''}`} onClick={() => { setLoginEmail('coordinator@college.com'); setLoginPassword('coord123'); }}>Coordinator</div>
                 <div className={`role-pill ${loginEmail === 'faculty@college.com' ? 'selected' : ''}`} onClick={() => { setLoginEmail('faculty@college.com'); setLoginPassword('faculty123'); }}>Faculty</div>
               </div>
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <input 
-                type="email" 
-                id="email" 
-                className="form-control" 
-                value={loginEmail} 
-                onChange={(e) => setLoginEmail(e.target.value)} 
-                required 
-                placeholder="email@college.com"
-              />
+
+            {loginError && <div className="login-error">{loginError}</div>}
+
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* User ID Field */}
+              <div className="geu-input-wrapper">
+                <div className="geu-input-icon">
+                  <User size={18} />
+                </div>
+                <input 
+                  type="email" 
+                  className="geu-input-field" 
+                  placeholder="User ID" 
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Password Field */}
+              <div className="geu-input-wrapper">
+                <div className="geu-input-icon">
+                  <Lock size={18} />
+                </div>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  className="geu-input-field" 
+                  placeholder="Password" 
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                />
+                <div 
+                  className="geu-input-icon" 
+                  style={{ cursor: 'pointer', borderRight: 'none', borderLeft: '1px solid #cbd5e1' }}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </div>
+              </div>
+
+              {/* Captcha Section */}
+              <div className="geu-captcha-row">
+                <button type="button" className="geu-captcha-refresh" onClick={generateCaptcha}>
+                  <RefreshCw size={16} />
+                </button>
+                <div className="geu-captcha-box">
+                  <div className="geu-captcha-line"></div>
+                  <div className="geu-captcha-line-2"></div>
+                  <span style={{ transform: 'skewX(-10deg)', textShadow: '1px 1px 2px rgba(255,255,255,0.8)', color: '#1e293b', fontWeight: 800 }}>
+                    {captchaCode}
+                  </span>
+                </div>
+              </div>
+
+              {/* Enter Captcha Input */}
+              <div className="geu-input-wrapper">
+                <input 
+                  type="text" 
+                  className="geu-input-field" 
+                  placeholder="Enter Captcha" 
+                  value={captchaInput}
+                  onChange={(e) => setCaptchaInput(e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button type="submit" className="geu-login-btn">
+                LOGIN
+              </button>
+            </form>
+
+            {/* Links */}
+            <div className="geu-links-row">
+              <a href="#forgot" className="geu-link" onClick={(e) => { e.preventDefault(); alert("Please contact your IT department coordinator to reset credentials."); }}>Forgot password ?</a>
+              <a href="#forgot" className="geu-link" onClick={(e) => { e.preventDefault(); alert("Please contact your IT department administrator to recover your User ID."); }}>Forgot ID ?</a>
             </div>
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input 
-                type="password" 
-                id="password" 
-                className="form-control" 
-                value={loginPassword} 
-                onChange={(e) => setLoginPassword(e.target.value)} 
-                required
-                placeholder="••••••••"
-              />
+
+            {/* Footer */}
+            <div className="geu-footer">
+              Powered by Cyborg IT Services (P) Ltd.
             </div>
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-              Authenticate <ArrowRight size={16} />
-            </button>
-          </form>
+          </div>
         </div>
       </div>
     );
@@ -509,6 +811,29 @@ export default function App() {
           </div>
           
           <div className="header-right">
+            {/* API Connection Indicator */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              padding: '0.375rem 0.625rem',
+              borderRadius: '999px',
+              backgroundColor: offlineMode ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+              color: offlineMode ? 'var(--danger)' : 'var(--success)',
+              marginRight: '0.5rem',
+              border: `1px solid ${offlineMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`
+            }}>
+              <span style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: offlineMode ? 'var(--danger)' : 'var(--success)'
+              }}></span>
+              {offlineMode ? 'Offline Mode (Mock Data)' : 'Connected to Spring Boot'}
+            </div>
+
             {/* Dark/Light Switcher */}
             <button className="icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}

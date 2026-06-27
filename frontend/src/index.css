@@ -909,93 +909,259 @@ body {
   margin-top: 0.5rem;
 }
 
-/* Login Page Styling */
-.login-container {
+/* Graphic Era Official ERP Login Layout */
+.geu-login-container {
   min-height: 100vh;
+  width: 100%;
   display: flex;
+  justify-content: flex-end; /* Align login card to the right */
   align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.15) 0%, transparent 40%),
-              radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 40%),
-              var(--bg-primary);
+  background-image: url('./assets/login_bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding-right: 8%; /* Margin from right edge */
+  font-family: 'Inter', sans-serif;
+  position: relative;
+  overflow: hidden;
 }
 
-.login-card {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  padding: 2.5rem;
-  width: 420px;
-  max-width: 90%;
-  box-shadow: var(--shadow-xl);
+.geu-login-card {
+  width: 380px;
+  background: rgba(30, 41, 59, 0.85); /* Transparent slate background */
+  backdrop-filter: blur(8px);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  color: #ffffff;
+  animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.login-logo {
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.geu-login-header {
+  background-color: #eaf2f8; /* Light blue header */
+  padding: 1.25rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.75rem;
-  color: var(--primary);
+  border-bottom: 3px solid #dfb86c; /* Gold divider border */
 }
 
-.login-header {
-  text-align: center;
+.geu-logo-emblem {
+  width: 48px;
+  height: 48px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e2e8f0;
+}
+
+.geu-logo-text {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
 }
 
-.login-title {
-  font-size: 1.25rem;
+.geu-logo-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.geu-logo-title .red {
+  color: #8a1538;
+}
+
+.geu-logo-title .dark {
+  color: #1e293b;
+}
+
+.geu-logo-subtitle {
+  font-size: 0.65rem;
   font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 0.2rem;
 }
 
-.login-subtitle {
-  font-size: 0.85rem;
-  color: var(--text-muted);
+.geu-login-body {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.login-error {
-  background-color: var(--danger-light);
-  color: var(--danger);
-  border: 1px solid var(--danger);
-  padding: 0.75rem;
-  border-radius: var(--radius-md);
-  font-size: 0.8rem;
-  font-weight: 500;
-  text-align: center;
+.geu-input-wrapper {
+  display: flex;
+  background-color: #ffffff;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  transition: border-color 0.2s;
 }
 
-.role-select-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.geu-input-wrapper:focus-within {
+  border-color: #0091ea;
+}
+
+.geu-input-icon {
+  width: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f1f5f9;
+  color: #475569;
+  border-right: 1px solid #cbd5e1;
+}
+
+.geu-input-field {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+  color: #1e293b;
+  background-color: #ffffff;
+}
+
+.geu-input-field::placeholder {
+  color: #94a3b8;
+}
+
+.geu-captcha-row {
+  display: flex;
   gap: 0.5rem;
+  align-items: center;
+}
+
+.geu-captcha-refresh {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1e3a2f; /* Deep green refresh button */
+  color: #22c55e;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.geu-captcha-refresh:hover {
+  background-color: #142820;
+}
+
+.geu-captcha-box {
+  flex: 1;
+  height: 42px;
+  border-radius: 4px;
+  background: linear-gradient(45deg, #fcd34d, #f472b6, #93c5fd);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', monospace;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #1e293b;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.geu-captcha-line {
+  position: absolute;
+  width: 120%;
+  height: 2px;
+  background-color: rgba(30, 41, 59, 0.4);
+  transform: rotate(15deg);
+}
+
+.geu-captcha-line-2 {
+  position: absolute;
+  width: 120%;
+  height: 2px;
+  background-color: rgba(30, 41, 59, 0.4);
+  transform: rotate(-10deg);
+}
+
+.geu-login-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #0091ea; /* Official blue login button */
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: background-color 0.2s;
+  margin-top: 0.5rem;
+}
+
+.geu-login-btn:hover {
+  background-color: #007bb5;
+}
+
+.geu-links-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.geu-link {
+  color: #ffffff;
+  text-decoration: none;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.geu-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.geu-autofill-section {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.625rem;
+  margin-bottom: 0.25rem;
+}
+
+.geu-autofill-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #cbd5e1;
   margin-bottom: 0.5rem;
 }
 
-.role-pill {
-  padding: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-  cursor: pointer;
+.geu-footer {
   text-align: center;
-  transition: all var(--transition-speed) ease;
-}
-
-.role-pill.selected {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: white;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  opacity: 0.8;
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 0.75rem;
 }
 
 /* Generation Screen Style (progress info, logs etc) */
