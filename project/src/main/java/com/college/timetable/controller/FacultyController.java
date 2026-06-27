@@ -3,13 +3,13 @@ package com.college.timetable.controller;
 
 import com.college.timetable.dto.request.FacultyRequest;
 import com.college.timetable.service.FacultyService;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequiredArgsConstructor
+
 @RequestMapping("/api/faculties")
 public class FacultyController {
     private final FacultyService facultyService;
@@ -50,5 +50,9 @@ public class FacultyController {
     public ResponseEntity<Object> getWorkload(@PathVariable Long id, @RequestParam String session) {
         // Cleanly bridges the workload response with the updated service layer
         return ResponseEntity.ok(facultyService.getWorkloadSummary(id, session));
+    }
+
+    public FacultyController(FacultyService facultyService) {
+        this.facultyService = facultyService;
     }
 }

@@ -7,14 +7,14 @@ import com.college.timetable.model.*;
 import com.college.timetable.repository.AllocationRepository;
 import com.college.timetable.repository.ResourceRepository;
 import com.college.timetable.repository.TimetableEntryRepository;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
+
 public class TimetableGenerationService {
 
     private static final String[] DAYS = { "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY" };
@@ -161,5 +161,11 @@ public class TimetableGenerationService {
 
     public boolean isSectionFree(Long sectionId, String day, int slot) {
         return !entryRepo.existsBySectionIdAndDayOfWeekAndSlotNumber(sectionId, day, slot);
+    }
+
+    public TimetableGenerationService(AllocationRepository allocationRepository, TimetableEntryRepository entryRepo, ResourceRepository resourceRepo) {
+        this.allocationRepository = allocationRepository;
+        this.entryRepo = entryRepo;
+        this.resourceRepo = resourceRepo;
     }
 }

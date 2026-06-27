@@ -4,14 +4,14 @@ package com.college.timetable.controller;
 import com.college.timetable.dto.request.DepartmentRequest;
 import com.college.timetable.model.Department;
 import com.college.timetable.service.DepartmentService;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequiredArgsConstructor
+
 @RequestMapping("/api/departments")
 public class DepartmentController {
     private final DepartmentService departmentService;
@@ -37,4 +37,8 @@ public class DepartmentController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable Long id) { departmentService.delete(id); }
+
+    public DepartmentController(DepartmentService departmentService) {
+        this.departmentService = departmentService;
+    }
 }

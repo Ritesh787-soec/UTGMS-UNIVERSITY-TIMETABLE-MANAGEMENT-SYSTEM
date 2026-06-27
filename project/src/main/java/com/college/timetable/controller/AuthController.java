@@ -3,12 +3,12 @@ package com.college.timetable.controller;
 
 import com.college.timetable.dto.request.LoginRequest;
 import com.college.timetable.service.AuthService;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequiredArgsConstructor
+
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService authService;
@@ -18,5 +18,9 @@ public class AuthController {
         // Wrapped with ResponseEntity<Object> to align with the service placeholder
         // return type seamlessly
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 }

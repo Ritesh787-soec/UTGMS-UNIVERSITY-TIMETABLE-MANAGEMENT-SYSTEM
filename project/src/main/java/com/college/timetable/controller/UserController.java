@@ -4,7 +4,7 @@ package com.college.timetable.controller;
 import com.college.timetable.dto.request.CreateUserRequest;
 import com.college.timetable.model.User;
 import com.college.timetable.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequiredArgsConstructor
+
 @RequestMapping("/api/users")
 public class UserController {
 
@@ -39,4 +39,9 @@ public class UserController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public List<User> getAllUsers() { return userRepository.findAll(); }
+
+    public UserController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 }

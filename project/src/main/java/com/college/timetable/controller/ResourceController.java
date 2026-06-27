@@ -4,14 +4,14 @@ package com.college.timetable.controller;
 import com.college.timetable.dto.request.ResourceRequest;
 import com.college.timetable.model.Resource;
 import com.college.timetable.service.ResourceService;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequiredArgsConstructor
+
 @RequestMapping("/api/resources")
 public class ResourceController {
     private final ResourceService resourceService;
@@ -41,4 +41,8 @@ public class ResourceController {
     @PutMapping("/{id}/toggle-active")
     @PreAuthorize("hasRole('ADMIN')")
     public Resource toggleActive(@PathVariable Long id) { return resourceService.toggleActive(id); }
+
+    public ResourceController(ResourceService resourceService) {
+        this.resourceService = resourceService;
+    }
 }

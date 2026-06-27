@@ -2,9 +2,7 @@ package com.college.timetable.model;
 
 import jakarta.persistence.*;
 import java.time.LocalTime;
-import lombok.Data;
 
-@Data
 @Entity
 @Table(name = "faculties")
 public class Faculty {
@@ -106,6 +104,39 @@ public class Faculty {
     }
 
     public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getEmail() {
+        return this.email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public Integer getMaxHoursPerWeek() {
+        return this.maxHoursPerWeek;
+    }
+
+    public void setMaxHoursPerWeek(Integer maxHoursPerWeek) {
+        this.maxHoursPerWeek = maxHoursPerWeek;
+    }
+
+    public Faculty() {
+    }
+
+    public Faculty(Long id, String employeeCode, String name, String email, String designation, Integer maxHoursPerWeek, Integer workloadHours, Integer working_days, LocalTime startTime, LocalTime endTime, String status) {
+        this.id = id;
+        this.employeeCode = employeeCode;
+        this.name = name;
+        this.email = email;
+        this.designation = designation;
+        this.maxHoursPerWeek = maxHoursPerWeek;
+        this.workloadHours = workloadHours;
+        this.working_days = working_days;
+        this.startTime = startTime;
+        this.endTime = endTime;
         this.status = status;
     }
 }

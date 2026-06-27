@@ -3,13 +3,13 @@ package com.college.timetable.controller;
 
 import com.college.timetable.dto.AllocationRequest;
 import com.college.timetable.service.AllocationService;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequiredArgsConstructor
+
 @RequestMapping("/api/allocations")
 public class AllocationController {
     private final AllocationService allocationService;
@@ -34,5 +34,9 @@ public class AllocationController {
     @PreAuthorize("hasRole('COORDINATOR')")
     public void delete(@PathVariable Long id) {
         allocationService.deleteAllocation(id);
+    }
+
+    public AllocationController(AllocationService allocationService) {
+        this.allocationService = allocationService;
     }
 }

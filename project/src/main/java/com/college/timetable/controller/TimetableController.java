@@ -10,7 +10,6 @@ import com.college.timetable.model.TimetableVersion;
 import com.college.timetable.repository.FacultyRepository;
 import com.college.timetable.service.TimetableGenerationService;
 import com.college.timetable.service.TimetableService;
-import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequiredArgsConstructor
+
 @RequestMapping("/api/timetable")
 public class TimetableController {
 
@@ -84,5 +83,11 @@ public class TimetableController {
     @PreAuthorize("hasRole('COORDINATOR')")
     public TimetableEntry toggleLock(@PathVariable Long id) {
         return timetableService.toggleLock(id);
+    }
+
+    public TimetableController(TimetableGenerationService generationService, TimetableService timetableService, FacultyRepository facultyRepository) {
+        this.generationService = generationService;
+        this.timetableService = timetableService;
+        this.facultyRepository = facultyRepository;
     }
 }

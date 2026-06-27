@@ -1,9 +1,7 @@
 package com.college.timetable.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
 
-@Data
 @Entity
 @Table(name = "resources")
 public class Resource {
@@ -28,5 +26,56 @@ public class Resource {
 
     public void setRoomNumber(String roomNumber) {
         this.name = roomNumber;
+    }
+
+    public Long getId() {
+        return this.id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getType() {
+        return this.type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public Integer getCapacity() {
+        return this.capacity;
+    }
+
+    public void setCapacity(Integer capacity) {
+        this.capacity = capacity;
+    }
+
+    public String getStatus() {
+        return this.status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Resource() {
+    }
+
+    public Resource(Long id, String name, String type, Integer capacity, String status) {
+        this.id = id;
+        this.name = name;
+        this.type = type;
+        this.capacity = capacity;
+        this.status = status;
     }
 }

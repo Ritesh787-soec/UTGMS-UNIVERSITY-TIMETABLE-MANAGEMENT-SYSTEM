@@ -1,7 +1,7 @@
 package com.college.timetable.controller;
 
 import com.college.timetable.service.TimetableExportService;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -9,7 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequiredArgsConstructor
+
 @RequestMapping("/api/export")
 public class ExportController {
 
@@ -36,5 +36,9 @@ public class ExportController {
                 .contentType(
                         MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(excel);
+    }
+
+    public ExportController(TimetableExportService exportService) {
+        this.exportService = exportService;
     }
 }
