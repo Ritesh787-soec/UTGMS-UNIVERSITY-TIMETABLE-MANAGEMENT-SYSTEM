@@ -587,14 +587,18 @@ export default function App() {
           {/* Header with Graphic Era logo */}
           <div className="geu-login-header">
             <div className="geu-logo-emblem">
-              <svg width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="24" cy="24" r="23" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1"/>
-                <circle cx="24" cy="24" r="19" fill="#1e293b"/>
-                <circle cx="24" cy="24" r="14" fill="#8a1538"/>
-                <path d="M24 15C19 15 17 21 17 25C17 31 22 33 24 33C26 33 31 31 31 25C31 21 29 15 24 15Z" fill="#ffffff"/>
-                <circle cx="24" cy="24" r="5" fill="#8a1538"/>
+              <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="48" fill="#ffffff" stroke="#cbd5e1" strokeWidth="2"/>
+                <circle cx="50" cy="50" r="40" fill="#1b1c1e"/>
+                <circle cx="50" cy="50" r="30" fill="#ffffff"/>
+                <circle cx="50" cy="50" r="26" fill="#a21c3c"/>
+                {/* Flame element */}
+                <path d="M50 22 C58 32 63 45 56 56 C50 64 41 60 38 52 C35 44 42 36 45 31 C47 27 50 22 50 22 Z" fill="#fcd34d" />
+                <path d="M50 30 C54 38 57 45 52 52 C49 56 43 54 41 48 C39 42 44 37 46 33 Z" fill="#f97316" />
               </svg>
             </div>
+            {/* Thin vertical grey line */}
+            <div style={{ width: '1px', height: '36px', backgroundColor: '#cbd5e1', margin: '0 0.5rem 0 0.25rem' }}></div>
             <div className="geu-logo-text">
               <span className="geu-logo-title">
                 <span className="red">Graphic</span>

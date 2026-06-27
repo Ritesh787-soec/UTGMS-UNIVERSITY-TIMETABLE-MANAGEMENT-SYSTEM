@@ -1154,6 +1154,41 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.role-select-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.role-pill {
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.role-pill:hover {
+  border-color: #dfb86c;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.role-pill.selected {
+  background-color: #8a1538 !important; /* Graphic Era Crimson Red */
+  border-color: #dfb86c !important; /* Gold border */
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(138, 21, 56, 0.6);
+  transform: scale(1.05);
+}
+
 .geu-footer {
   text-align: center;
   font-size: 0.75rem;
