@@ -303,6 +303,7 @@ export default function App() {
   const [genLogs, setGenLogs] = useState([]);
   const [genReport, setGenReport] = useState(null);
   const [genScope, setGenScope] = useState("full");
+  const [versionLifecycle, setVersionLifecycle] = useState("Draft");
 
   // Compare version view state
   const [versionControl, setVersionControl] = useState({
@@ -1312,17 +1313,71 @@ export default function App() {
             <>
               <div className="page-header">
                 <div>
-                  <h1 className="page-title">Version Control & Timetable comparison</h1>
-                  <p className="page-subtitle">Review draft revisions and approve modifications.</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <h1 className="page-title" style={{ margin: 0 }}>Version Control & Timetable Comparison</h1>
+                    <span className="status-pill" style={{
+                      backgroundColor: versionLifecycle === 'Draft' ? 'var(--primary-light)' :
+                                       versionLifecycle === 'Review' ? 'var(--warning-light)' :
+                                       versionLifecycle === 'Finalized' ? 'var(--success-light)' : 'rgba(168, 85, 247, 0.1)',
+                      color: versionLifecycle === 'Draft' ? 'var(--primary)' :
+                             versionLifecycle === 'Review' ? 'var(--warning)' :
+                             versionLifecycle === 'Finalized' ? 'var(--success)' : 'rgb(168, 85, 247)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '0.25rem 0.6rem',
+                      textTransform: 'uppercase'
+                    }}>
+                      {versionLifecycle}
+                    </span>
+                  </div>
+                  <p className="page-subtitle">Review draft revisions, compare versions, and transition through the lifecycle stages.</p>
                 </div>
                 {currentUser.role !== 'FACULTY' && (
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <button className="btn btn-secondary" onClick={() => alert("Restoring to v1.2 configuration...")}>
+                    <button className="btn btn-secondary" onClick={() => {
+                      setVersionLifecycle("Draft");
+                      alert("Rollback Triggered! Restored previous timetable version (v1.2) configurations successfully. Version state reset to Draft.");
+                      logActivity(currentUser.email, "Version Rollback", "Restored timetable version configuration back to v1.2");
+                    }}>
                       <RefreshCw size={16} /> Rollback to v1.2
                     </button>
-                    <button className="btn btn-primary" onClick={() => alert("Current draft approved and published as official timetable!")}>
-                      <CheckCircle size={16} /> Approve Current (v1.3)
-                    </button>
+                    
+                    {versionLifecycle === 'Draft' && (
+                      <button className="btn btn-primary" onClick={() => {
+                        setVersionLifecycle("Review");
+                        alert("Timetable draft submitted to coordinator review pool! Status changed to REVIEW.");
+                        logActivity(currentUser.email, "Version Status Change", "Submitted timetable draft v1.3 for Review");
+                      }}>
+                        Submit for Review
+                      </button>
+                    )}
+                    {versionLifecycle === 'Review' && (
+                      <button className="btn btn-primary" style={{ backgroundColor: 'var(--success)', borderColor: 'var(--success)' }} onClick={() => {
+                        setVersionLifecycle("Finalized");
+                        alert("Timetable version v1.3 approved and published as the official active schedule! Status changed to FINALIZED.");
+                        logActivity(currentUser.email, "Version Finalize", "Approved and published timetable version v1.3");
+                      }}>
+                        <CheckCircle size={16} /> Finalize & Publish
+                      </button>
+                    )}
+                    {versionLifecycle === 'Finalized' && (
+                      <button className="btn btn-primary" style={{ backgroundColor: 'rgb(168, 85, 247)', borderColor: 'rgb(168, 85, 247)' }} onClick={() => {
+                        setVersionLifecycle("Revision");
+                        alert("New timetable revision draft cloned from the finalized version. Status changed to REVISION.");
+                        logActivity(currentUser.email, "Version Revision", "Created new timetable revision from finalized version");
+                      }}>
+                        Create Revision
+                      </button>
+                    )}
+                    {versionLifecycle === 'Revision' && (
+                      <button className="btn btn-primary" onClick={() => {
+                        setVersionLifecycle("Review");
+                        alert("Revision draft submitted for review! Status changed to REVIEW.");
+                        logActivity(currentUser.email, "Version Status Change", "Submitted revision draft for Review");
+                      }}>
+                        Submit for Review
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1833,6 +1888,115 @@ export default function App() {
                       Add Allocation
                     </button>
                   </form>
+                </div>
+              </div>
+
+              {/* Merged Sections Configuration Card (BR-19, BR-20, BR-21) */}
+              <div className="card" style={{ marginTop: '1.5rem' }}>
+                <h3 className="card-title">Merged Sections for Joint Lectures (BR-19, BR-20, BR-21)</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                  Combine student sections for specific subject lectures (e.g., merging Section A and Section C for DBMS). A single faculty member will conduct the session in a compatible room matching combined capacity.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+                  {/* Left Column: Active Joint Classes */}
+                  <div>
+                    <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Active Merged Classes</h4>
+                    <div className="table-container">
+                      <table className="custom-table" style={{ fontSize: '0.8rem' }}>
+                        <thead>
+                          <tr>
+                            <th>Subject</th>
+                            <th>Sections Merged</th>
+                            <th>Combined Strength</th>
+                            <th>Assigned Faculty</th>
+                            <th>Room Cap Check</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ fontWeight: 600 }}>TCS-401 DBMS</td>
+                            <td>Section A + Section C</td>
+                            <td>73 Students (38+35)</td>
+                            <td>Prof. Alan Turing</td>
+                            <td>
+                              <span className="status-pill status-pending" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontSize: '0.7rem' }}>
+                                Insufficient Cap (Room LT-3 Cap 60)
+                              </span>
+                            </td>
+                            <td>
+                              <button className="icon-btn" onClick={() => alert("Merged section class deleted successfully!")}>
+                                <Trash size={14} style={{ color: 'var(--danger)' }} />
+                              </button>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ fontWeight: 600 }}>TCS-302 OS Concepts</td>
+                            <td>Section B + Section D</td>
+                            <td>56 Students (30+26)</td>
+                            <td>Prof. Linus</td>
+                            <td>
+                              <span className="status-pill status-approved" style={{ fontSize: '0.7rem' }}>
+                                OK (Lecture Hall C Cap 80)
+                              </span>
+                            </td>
+                            <td>
+                              <button className="icon-btn" onClick={() => alert("Merged section class deleted successfully!")}>
+                                <Trash size={14} style={{ color: 'var(--danger)' }} />
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Merge Form */}
+                  <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1.5rem' }}>
+                    <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Configure Joint Class</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div className="form-group">
+                        <label style={{ fontSize: '0.75rem' }}>Select Subject</label>
+                        <select className="form-control" defaultValue="1">
+                          {subjects.map(s => (
+                            <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.75rem' }}>Primary Sec</label>
+                          <select className="form-control" defaultValue="1">
+                            {sections.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.75rem' }}>Secondary Sec</label>
+                          <select className="form-control" defaultValue="2">
+                            {sections.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label style={{ fontSize: '0.75rem' }}>Assign Faculty</label>
+                        <select className="form-control" defaultValue="1">
+                          {faculties.map(f => (
+                            <option key={f.id} value={f.id}>{f.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => {
+                        alert("Joint class merged successfully! Dynamic capacity rules compiled.");
+                      }}>
+                        Merge Sections
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
