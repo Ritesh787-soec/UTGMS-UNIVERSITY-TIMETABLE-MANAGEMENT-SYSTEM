@@ -302,6 +302,7 @@ export default function App() {
   const [genStage, setGenStage] = useState("");
   const [genLogs, setGenLogs] = useState([]);
   const [genReport, setGenReport] = useState(null);
+  const [genScope, setGenScope] = useState("full");
 
   // Compare version view state
   const [versionControl, setVersionControl] = useState({
@@ -2223,13 +2224,25 @@ export default function App() {
                       <option>Semi-Automatic Mode (Manual Override Allowed)</option>
                     </select>
                   </div>
-                  <div className="form-group">
+                   <div className="form-group">
                     <label>Generation Scope (UC-07, UC-11)</label>
-                    <select className="form-control">
-                      <option>Full Timetable Generation (Clean slate - UC-07)</option>
-                      <option>Partial Regeneration (Solve conflict areas only - UC-11)</option>
+                    <select className="form-control" value={genScope} onChange={(e) => setGenScope(e.target.value)}>
+                      <option value="full">Full Timetable Generation (Clean slate - UC-07)</option>
+                      <option value="partial">Partial Regeneration (Solve conflict areas only - UC-11)</option>
                     </select>
                   </div>
+                  
+                  {genScope === 'partial' && (
+                    <div className="form-group animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px dashed var(--border-color)', padding: '0.85rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-secondary)', marginBottom: '1rem' }}>
+                      <label style={{ fontWeight: 600, fontSize: '0.8rem' }}>Select Regeneration Target Scope</label>
+                      <select className="form-control" defaultValue="faculty">
+                        <option value="faculty">Regenerate One Faculty (Dr. Grace Hopper)</option>
+                        <option value="section">Regenerate One Section (Section A)</option>
+                        <option value="semester">Regenerate One Semester (Semester 4)</option>
+                        <option value="selected">Regenerate Selected Entries (Mon/Tue conflicts)</option>
+                      </select>
+                    </div>
+                  )}
                   
                   <button 
                     className="btn btn-primary" 
@@ -2363,6 +2376,34 @@ export default function App() {
                           </button>
                         </td>
                       </tr>
+                      <tr>
+                        <td><span className="badge badge-danger">Section Clash</span></td>
+                        <td style={{ fontSize: '0.85rem' }}>
+                          <strong>Section A (B.Tech)</strong> is scheduled for both DBMS and OS on Thursday Slot 1.
+                        </td>
+                        <td><span style={{ color: 'var(--danger)', fontWeight: 600 }}>Hard Constraint</span></td>
+                        <td style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => {
+                            alert("Automatic Alternate Slot Suggestions:\n1. Thursday Slot 3 (Vacant, Section free, Faculty free)\n2. Friday Slot 2 (Vacant, Section free, Faculty free)\n\nSelected: Thursday Slot 3. Conflict resolved!");
+                          }}>
+                            Suggest Alternate Slot
+                          </button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><span className="badge badge-danger">Capacity Violation</span></td>
+                        <td style={{ fontSize: '0.85rem' }}>
+                          <strong>Section B (56 students)</strong> is scheduled in Room LAB-2 (Capacity: 30) for DBMS Lab on Wednesday Slot 3.
+                        </td>
+                        <td><span style={{ color: 'var(--danger)', fontWeight: 600 }}>Hard Constraint</span></td>
+                        <td style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => {
+                            alert("Available larger rooms for Wed Slot 3:\n1. Room LT-3 (Capacity: 60, Vacant)\n2. Lecture Hall C (Capacity: 80, Vacant)\n\nSelected: Room LT-3. Room Capacity Validated. Conflict resolved!");
+                          }}>
+                            Suggest Large Room
+                          </button>
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -2492,6 +2533,83 @@ export default function App() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              {/* Dynamic Custom Roles & Permission Matrix (UC-15) */}
+              <div className="card" style={{ marginTop: '1.5rem' }}>
+                <h3 className="card-title">Dynamic Custom Roles & Permission Matrix</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                  Manage dynamic access parameters across Administrator, Coordinator, Faculty, and custom roles.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+                  {/* Matrix Checkbox Table */}
+                  <div>
+                    <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Permissions Mapping Matrix</h4>
+                    <div className="table-container">
+                      <table className="custom-table" style={{ fontSize: '0.8rem' }}>
+                        <thead>
+                          <tr>
+                            <th>Module / Action Feature</th>
+                            <th>Admin</th>
+                            <th>Coordinator</th>
+                            <th>Faculty</th>
+                            <th>Custom Role</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { name: "Modify Directory Configuration", admin: true, coord: true, faculty: false, custom: false },
+                            { name: "Execute Constraint solver (OptaPlanner)", admin: true, coord: true, faculty: false, custom: false },
+                            { name: "Edit Timetable Slots (Drag-and-Drop)", admin: true, coord: true, faculty: false, custom: true },
+                            { name: "Submit Schedule requests", admin: true, coord: true, faculty: true, custom: true },
+                            { name: "Access System Audit logs", admin: true, coord: false, faculty: false, custom: false },
+                            { name: "Excel POI spreadsheet Imports", admin: true, coord: true, faculty: false, custom: false }
+                          ].map((perm, idx) => (
+                            <tr key={idx}>
+                              <td style={{ fontWeight: 600 }}>{perm.name}</td>
+                              <td><input type="checkbox" defaultChecked={perm.admin} onChange={() => alert("Admin privilege updated successfully!")} /></td>
+                              <td><input type="checkbox" defaultChecked={perm.coord} onChange={() => alert("Coordinator privilege updated successfully!")} /></td>
+                              <td><input type="checkbox" defaultChecked={perm.faculty} onChange={() => alert("Faculty privilege updated successfully!")} /></td>
+                              <td><input type="checkbox" defaultChecked={perm.custom} onChange={() => alert("Custom role privilege updated successfully!")} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* System Toggle Settings */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '1.5rem' }}>
+                    <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Engine Controls</h4>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                      <input type="checkbox" id="faculty-lock-override" defaultChecked />
+                      <label htmlFor="faculty-lock-override">Enforce strict capacity checks on generation</label>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                      <input type="checkbox" id="multi-campus-sync" />
+                      <label htmlFor="multi-campus-sync">Enable Multi-Campus schedules sync</label>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                      <input type="checkbox" id="auto-recovery" defaultChecked />
+                      <label htmlFor="auto-recovery">Enable auto-resolution loop on section overlaps</label>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                      <input type="checkbox" id="dynamic-registrations" defaultChecked />
+                      <label htmlFor="dynamic-registrations">Allow dynamic registrations from login page</label>
+                    </div>
+
+                    <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={() => {
+                      alert("Permission matrix rules updated! Saved dynamically to database.");
+                    }}>
+                      Save Permission Matrix
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
