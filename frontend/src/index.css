@@ -917,7 +917,7 @@ body {
   justify-content: flex-end; /* Align login card to the right */
   align-items: center;
   background-image: url('./assets/login_bg.png');
-  background-size: cover;
+  background-size: 100% 100%; /* Stretch to fit screen exactly without zoom */
   background-position: center;
   background-repeat: no-repeat;
   padding-right: 8%; /* Margin from right edge */
@@ -928,16 +928,17 @@ body {
 
 .geu-login-card {
   width: 380px;
-  background: rgba(30, 41, 59, 0.85); /* Transparent slate background */
-  backdrop-filter: blur(8px);
+  background: transparent; /* Completely transparent background */
   border-radius: 4px;
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  overflow: hidden; /* Disable scrollbars entirely */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.4); /* Light border */
   display: flex;
   flex-direction: column;
   color: #ffffff;
   animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: 1rem 0; /* Minimized margin from top and bottom */
+  max-height: calc(100vh - 2rem); /* Maximum height bounds */
 }
 
 @keyframes slideInRight {
@@ -998,10 +999,10 @@ body {
 }
 
 .geu-login-body {
-  padding: 2rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.5rem;
 }
 
 .geu-input-wrapper {
@@ -1022,8 +1023,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: #8da2bb; /* Steel blue icon container background */
+  color: #1e293b; /* Dark icon color */
   border-right: 1px solid #cbd5e1;
 }
 
@@ -1140,10 +1141,10 @@ body {
 }
 
 .geu-autofill-section {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.7); /* Dark translucent box for readability */
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 4px;
-  padding: 0.625rem;
+  padding: 0.5rem;
   margin-bottom: 0.25rem;
 }
 
@@ -1166,9 +1167,9 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background-color: rgba(255, 255, 255, 0.05);
-  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: rgba(0, 0, 0, 0.45); /* Darker pill background */
+  color: #ffffff; /* High contrast text */
   cursor: pointer;
   text-align: center;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1192,11 +1193,11 @@ body {
 .geu-footer {
   text-align: center;
   font-size: 0.75rem;
-  color: #cbd5e1;
-  opacity: 0.8;
-  margin-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  padding-top: 0.75rem;
+  color: #ffffff;
+  opacity: 0.9;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  padding-top: 0.4rem;
 }
 
 /* Generation Screen Style (progress info, logs etc) */

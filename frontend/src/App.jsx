@@ -3,8 +3,10 @@ import {
   BookOpen, Users, User, Eye, EyeOff, Book, Layers, Cpu, HelpCircle, FileText, 
   Sun, Moon, Shield, Bell, Settings, Search, CheckCircle, 
   XCircle, Plus, Edit, Trash, Lock, Unlock, ArrowLeftRight, 
-  Download, AlertTriangle, RefreshCw, LogIn, LogOut, Check, ArrowRight
+  Download, AlertTriangle, RefreshCw, LogIn, LogOut, Check, ArrowRight, Database, Calendar
 } from 'lucide-react';
+import geuLogo from './assets/geu_logo.png';
+import homeHeaderImg from './assets/home_header.png';
 
 // ==========================================
 // API INTEGRATION & MOCK DATASETS
@@ -136,7 +138,7 @@ const INITIAL_LOGS = [
 
 export default function App() {
   // App-wide state
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("light");
   const [currentUser, setCurrentUser] = useState(null); // null = login screen
   const [currentTab, setCurrentTab] = useState("dashboard");
   const [isLoggedOut, setIsLoggedOut] = useState(false);
@@ -153,6 +155,72 @@ export default function App() {
   const [logs, setLogs] = useState(INITIAL_LOGS);
   const [offlineMode, setOfflineMode] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [dynamicUsers, setDynamicUsers] = useState(() => {
+    const saved = localStorage.getItem('utgms_dynamic_users');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [allocations, setAllocations] = useState([]);
+  const [selectedAllocationSection, setSelectedAllocationSection] = useState(1);
+  const [allocFormFaculty, setAllocFormFaculty] = useState("");
+  const [allocFormSubject, setAllocFormSubject] = useState("");
+  const [allocFormSession, setAllocFormSession] = useState("2026-ODD");
+
+  const loadAllocations = async (sectionId) => {
+    try {
+      const data = await apiCall(`/allocations/section/${sectionId}`);
+      if (Array.isArray(data)) {
+        setAllocations(data);
+      }
+    } catch (e) {
+      console.warn("Allocations failed to load via API. Using mock fallback:", e.message);
+      setAllocations([
+        { id: 1, facultyId: 1, facultyName: "Prof. Alan Turing", subjectId: 1, subjectName: "CS-201 Data Structures", sectionId: Number(sectionId), session: "2026-ODD" },
+        { id: 2, facultyId: 2, facultyName: "Dr. Grace Hopper", subjectId: 2, subjectName: "CS-305 Algorithms", sectionId: Number(sectionId), session: "2026-ODD" }
+      ]);
+    }
+  };
+
+  const handleCreateAllocation = async (allocationData) => {
+    try {
+      setLoading(true);
+      await apiCall('/allocations', 'POST', allocationData);
+      alert("Faculty Allocation saved successfully.");
+      loadAllocations(allocationData.sectionId);
+    } catch (e) {
+      console.warn("Backend allocation save failed. Using local mock fallback.", e.message);
+      const newAlloc = {
+        id: Date.now(),
+        facultyId: Number(allocationData.facultyId),
+        facultyName: faculties.find(f => f.id === Number(allocationData.facultyId))?.name || "Unknown Faculty",
+        subjectId: Number(allocationData.subjectId),
+        subjectName: subjects.find(s => s.id === Number(allocationData.subjectId))?.name || "Unknown Subject",
+        sectionId: Number(allocationData.sectionId),
+        session: allocationData.session
+      };
+      setAllocations(prev => [...prev, newAlloc]);
+      alert("Faculty Allocation saved successfully (Mock Mode).");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAllocation = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this allocation?")) return;
+    try {
+      setLoading(true);
+      await apiCall(`/allocations/${id}`, 'DELETE');
+      alert("Allocation deleted successfully.");
+      loadAllocations(selectedAllocationSection);
+    } catch (e) {
+      console.warn("Backend allocation delete failed. Using local mock fallback.", e.message);
+      setAllocations(prev => prev.filter(a => a.id !== id));
+      alert("Allocation deleted successfully (Mock Mode).");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const loadData = async () => {
     try {
@@ -191,6 +259,12 @@ export default function App() {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    if (currentUser && (currentTab === 'allocations' || currentTab === 'dashboard')) {
+      loadAllocations(selectedAllocationSection);
+    }
+  }, [currentUser, selectedAllocationSection, currentTab]);
+
 
   // UI state variables
   const [selectedCell, setSelectedCell] = useState(null);
@@ -203,6 +277,14 @@ export default function App() {
   const [captchaCode, setCaptchaCode] = useState("PNINEN");
   const [captchaInput, setCaptchaInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState("ADMIN");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [systemNotifications, setSystemNotifications] = useState([
+    { id: 1, type: "conflict", title: "Faculty Collision Alert", desc: "Prof. Alan Turing double-booked on Monday Slot 2", time: "10 mins ago", read: false },
+    { id: 2, type: "request", title: "New Leave Request", desc: "Dr. Sarah Jenkins submitted a schedule adjust request", time: "1 hr ago", read: false },
+    { id: 3, type: "backup", title: "Backup Successful", desc: "Database snapshot UTGMS_snapshot_2026.sql saved", time: "2 hrs ago", read: false },
+    { id: 4, type: "solver", title: "Solver Completed", desc: "B.Tech CSE timetable generated with 92% efficiency", time: "Yesterday", read: true }
+  ]);
 
   const generateCaptcha = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -233,6 +315,11 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Generate random captcha on mount (every time site is opened)
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
+
   // Handle Authentication
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -249,6 +336,12 @@ export default function App() {
       localStorage.setItem('token', token);
       const payload = decodeJwt(token);
       if (payload) {
+        if (payload.role !== selectedRole) {
+          setLoginError(`Access denied. Your account is not configured with the selected role: ${selectedRole}.`);
+          localStorage.removeItem('token');
+          generateCaptcha();
+          return;
+        }
         const user = {
           email: payload.sub,
           role: payload.role,
@@ -261,18 +354,71 @@ export default function App() {
       }
     } catch (err) {
       console.warn("Login API failed. Trying offline credentials fallback:", err.message);
-      const user = INITIAL_USERS.find(u => u.email === loginEmail);
-      if (user && (
-        (loginPassword === "admin123" && user.role === "ADMIN") ||
-        (loginPassword === "coord123" && user.role === "COORDINATOR") ||
-        (loginPassword === "faculty123" && user.role === "FACULTY")
-      )) {
-        setCurrentUser(user);
-        setOfflineMode(true);
-        logActivity(user.email, "User Login", `Logged in successfully (Offline Mock Mode)`);
-      } else {
-        setLoginError("Invalid email or password credentials.");
+      
+      let user = INITIAL_USERS.find(u => u.email.toLowerCase() === loginEmail.trim().toLowerCase());
+      if (!user && selectedRole === 'FACULTY') {
+        const matchingFaculty = faculties.find(f => f.email && f.email.toLowerCase() === loginEmail.trim().toLowerCase());
+        if (matchingFaculty) {
+          user = {
+            id: matchingFaculty.id,
+            email: matchingFaculty.email,
+            name: matchingFaculty.name,
+            role: "FACULTY",
+            password: "faculty123"
+          };
+        }
       }
+      
+      // Search in dynamic user repository
+      if (!user) {
+        user = dynamicUsers.find(u => u.email.toLowerCase() === loginEmail.trim().toLowerCase());
+      }
+      
+      // Auto-Registration: create and save if User ID does not exist anywhere
+      if (!user) {
+        const newDynamicUser = {
+          id: Date.now(),
+          email: loginEmail.trim(),
+          name: loginEmail.trim().split('@')[0],
+          role: selectedRole,
+          password: loginPassword // Stores the password they just typed
+        };
+        
+        const updatedUsers = [...dynamicUsers, newDynamicUser];
+        setDynamicUsers(updatedUsers);
+        localStorage.setItem('utgms_dynamic_users', JSON.stringify(updatedUsers));
+        
+        user = newDynamicUser;
+        logActivity(user.email, "Auto Registration", `Successfully registered new profile for ${selectedRole}`);
+      }
+      
+      // Enforce role selection match
+      if (user.role !== selectedRole) {
+        setLoginError(`Access denied. The entered User ID is registered as a ${user.role}, not a ${selectedRole}.`);
+        generateCaptcha();
+        return;
+      }
+      
+      // Enforce password validation
+      let isPasswordValid = false;
+      if (user.password) {
+        isPasswordValid = (loginPassword === user.password);
+      } else {
+        isPasswordValid = 
+          (loginPassword === "admin123" && user.role === "ADMIN") ||
+          (loginPassword === "coord123" && user.role === "COORDINATOR") ||
+          (loginPassword === "faculty123" && user.role === "FACULTY");
+      }
+        
+      if (!isPasswordValid) {
+        setLoginError("Invalid Password. Please check your credentials.");
+        generateCaptcha();
+        return;
+      }
+      
+      setCurrentUser(user);
+      setOfflineMode(true);
+      logActivity(user.email, "User Login", `Logged in successfully (Offline Mock Mode)`);
     }
   };
 
@@ -585,37 +731,22 @@ export default function App() {
       <div className="geu-login-container">
         <div className="geu-login-card">
           {/* Header with Graphic Era logo */}
-          <div className="geu-login-header">
-            <div className="geu-logo-emblem">
-              <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="48" fill="#ffffff" stroke="#cbd5e1" strokeWidth="2"/>
-                <circle cx="50" cy="50" r="40" fill="#1b1c1e"/>
-                <circle cx="50" cy="50" r="30" fill="#ffffff"/>
-                <circle cx="50" cy="50" r="26" fill="#a21c3c"/>
-                {/* Flame element */}
-                <path d="M50 22 C58 32 63 45 56 56 C50 64 41 60 38 52 C35 44 42 36 45 31 C47 27 50 22 50 22 Z" fill="#fcd34d" />
-                <path d="M50 30 C54 38 57 45 52 52 C49 56 43 54 41 48 C39 42 44 37 46 33 Z" fill="#f97316" />
-              </svg>
-            </div>
-            {/* Thin vertical grey line */}
-            <div style={{ width: '1px', height: '36px', backgroundColor: '#cbd5e1', margin: '0 0.5rem 0 0.25rem' }}></div>
-            <div className="geu-logo-text">
-              <span className="geu-logo-title">
-                <span className="red">Graphic</span>
-                <span className="dark">Era</span>
-              </span>
-              <span className="geu-logo-subtitle">Deemed to be University</span>
-            </div>
+          <div className="geu-login-header" style={{ backgroundColor: '#e5f1f9', padding: '0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <img 
+              src={geuLogo} 
+              alt="Graphic Era University Logo" 
+              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} 
+            />
           </div>
 
           <div className="geu-login-body">
-            {/* Quick Autofill Role Selector */}
+            {/* Role Selection Selector */}
             <div className="geu-autofill-section">
-              <div className="geu-autofill-title">Select Role for Quick Autofill:</div>
+              <div className="geu-autofill-title">Select Role to Login:</div>
               <div className="role-select-grid">
-                <div className={`role-pill ${loginEmail === 'admin@college.com' ? 'selected' : ''}`} onClick={() => { setLoginEmail('admin@college.com'); setLoginPassword('admin123'); }}>Admin</div>
-                <div className={`role-pill ${loginEmail === 'coordinator@college.com' ? 'selected' : ''}`} onClick={() => { setLoginEmail('coordinator@college.com'); setLoginPassword('coord123'); }}>Coordinator</div>
-                <div className={`role-pill ${loginEmail === 'faculty@college.com' ? 'selected' : ''}`} onClick={() => { setLoginEmail('faculty@college.com'); setLoginPassword('faculty123'); }}>Faculty</div>
+                <div className={`role-pill ${selectedRole === 'ADMIN' ? 'selected' : ''}`} onClick={() => setSelectedRole('ADMIN')}>Admin</div>
+                <div className={`role-pill ${selectedRole === 'COORDINATOR' ? 'selected' : ''}`} onClick={() => setSelectedRole('COORDINATOR')}>Coordinator</div>
+                <div className={`role-pill ${selectedRole === 'FACULTY' ? 'selected' : ''}`} onClick={() => setSelectedRole('FACULTY')}>Faculty</div>
               </div>
             </div>
 
@@ -713,7 +844,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="sidebar-logo">
           <BookOpen size={28} />
-          <span>UniSched Admin</span>
+          <span>Graphic Era</span>
         </div>
         
         <nav className="sidebar-menu">
@@ -765,6 +896,14 @@ export default function App() {
               >
                 <Book size={18} />
                 <span>Subjects</span>
+              </div>
+
+              <div 
+                className={`menu-item ${currentTab === 'allocations' ? 'active' : ''}`} 
+                onClick={() => setCurrentTab('allocations')}
+              >
+                <ArrowLeftRight size={18} />
+                <span>Faculty Allocation</span>
               </div>
 
               <div 
@@ -843,10 +982,92 @@ export default function App() {
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            <button className="icon-btn">
-              <Bell size={20} />
-              <div className="badge"></div>
-            </button>
+            {/* Notifications Dropdown */}
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <button className="icon-btn" onClick={() => setShowNotifications(!showNotifications)}>
+                <Bell size={20} />
+                {systemNotifications.filter(n => !n.read).length > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-2px',
+                    right: '-2px',
+                    backgroundColor: 'var(--danger)',
+                    color: '#ffffff',
+                    borderRadius: '50%',
+                    width: '16px',
+                    height: '16px',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {systemNotifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="card" style={{
+                  position: 'absolute',
+                  top: '45px',
+                  right: '0',
+                  width: '320px',
+                  zIndex: 1000,
+                  boxShadow: 'var(--shadow-xl)',
+                  padding: '0.75rem 0',
+                  border: '1px solid var(--border-color)',
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                  backgroundColor: 'var(--bg-card)',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Notifications</span>
+                    <button 
+                      style={{ fontSize: '0.75rem', color: 'var(--primary)', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600 }}
+                      onClick={() => {
+                        setSystemNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                      }}
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                  {systemNotifications.length === 0 ? (
+                    <div style={{ padding: '2rem 1rem', textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                      No notifications
+                    </div>
+                  ) : (
+                    systemNotifications.map(n => (
+                      <div 
+                        key={n.id} 
+                        onClick={() => {
+                          setSystemNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
+                        }}
+                        style={{
+                          padding: '0.75rem 1rem',
+                          borderBottom: '1px solid var(--border-color)',
+                          backgroundColor: n.read ? 'transparent' : 'var(--bg-tertiary)',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s'
+                        }}
+                        className="notification-item"
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', alignItems: 'center' }}>
+                          <span style={{ fontWeight: n.read ? 600 : 700, fontSize: '0.8rem', color: n.read ? 'var(--text-primary)' : 'var(--primary)' }}>
+                            {n.title}
+                          </span>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{n.time}</span>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.3 }}>
+                          {n.desc}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             
             <div className="user-profile">
               <img 
@@ -862,14 +1083,22 @@ export default function App() {
           </div>
         </header>
 
-        {/* Content Area */}
         <main className="page-container">
+          {/* Branded Department Header Banner */}
+          <div style={{ width: '100%', marginBottom: '2rem', overflow: 'hidden' }}>
+            <img 
+              src={homeHeaderImg} 
+              alt="Department of CSE Header" 
+              style={{ width: '100%', height: 'auto', display: 'block' }} 
+            />
+          </div>
           
           {/* ==========================================
               TAB: DASHBOARD
               ========================================== */}
           {currentTab === 'dashboard' && (
             <>
+
               <div className="page-header">
                 <div>
                   <h1 className="page-title">Welcome back, {currentUser.name}</h1>
@@ -983,6 +1212,32 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {currentUser.role === 'ADMIN' && (
+                <div className="card" style={{ marginTop: '1.5rem' }}>
+                  <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Database size={18} /> System Backup & Restore Administration (UC-22, UC-23)
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                    Perform standard database backups and configuration snapshots to secure the Graphic Era university scheduling directory.
+                  </p>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button className="btn btn-primary" onClick={() => {
+                      alert("Database backup snapshot initiated! Generating UTGMS_snapshot_2026.sql... Backup completed successfully!");
+                    }}>
+                      <Download size={16} style={{ marginRight: '0.5rem' }} /> Create Full Database Backup (UC-22)
+                    </button>
+                    <button className="btn" style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }} onClick={() => {
+                      const file = window.prompt("Enter the path or name of the backup SQL file to restore (e.g., UTGMS_snapshot_2026.sql):");
+                      if (file) {
+                        alert(`Restoring database from snapshot file "${file}"... Database rollback and configuration restore completed successfully!`);
+                      }
+                    }}>
+                      <RefreshCw size={16} style={{ marginRight: '0.5rem' }} /> Restore Database Snapshot (UC-23)
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -1255,7 +1510,7 @@ export default function App() {
                         <th>Details</th>
                         <th>Reason</th>
                         <th>Status</th>
-                        {currentUser.role !== 'FACULTY' && <th>Actions</th>}
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1270,34 +1525,218 @@ export default function App() {
                               {req.status}
                             </span>
                           </td>
-                          {currentUser.role !== 'FACULTY' && (
-                            <td>
-                              {req.status === 'PENDING' ? (
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                  <button 
-                                    className="btn btn-success" 
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                    onClick={() => handleProcessRequest(req.id, "APPROVED")}
-                                  >
-                                    Approve
-                                  </button>
-                                  <button 
-                                    className="btn btn-danger" 
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                    onClick={() => handleProcessRequest(req.id, "REJECTED")}
-                                  >
-                                    Reject
-                                  </button>
-                                </div>
-                              ) : (
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Processed</span>
-                              )}
-                            </td>
-                          )}
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.375rem' }}>
+                              <button 
+                                className="btn" 
+                                style={{ 
+                                  padding: '0.25rem 0.5rem', 
+                                  fontSize: '0.75rem', 
+                                  backgroundColor: req.status === 'APPROVED' ? 'var(--success)' : 'transparent',
+                                  color: req.status === 'APPROVED' ? '#ffffff' : 'var(--text-secondary)',
+                                  border: '1px solid var(--border-color)',
+                                  opacity: req.status === 'APPROVED' ? 1 : 0.6
+                                }}
+                                onClick={() => handleProcessRequest(req.id, "APPROVED")}
+                              >
+                                Approve
+                              </button>
+                              <button 
+                                className="btn" 
+                                style={{ 
+                                  padding: '0.25rem 0.5rem', 
+                                  fontSize: '0.75rem', 
+                                  backgroundColor: req.status === 'REJECTED' ? 'var(--danger)' : 'transparent',
+                                  color: req.status === 'REJECTED' ? '#ffffff' : 'var(--text-secondary)',
+                                  border: '1px solid var(--border-color)',
+                                  opacity: req.status === 'REJECTED' ? 1 : 0.6
+                                }}
+                                onClick={() => handleProcessRequest(req.id, "REJECTED")}
+                              >
+                                Reject
+                              </button>
+                              <button 
+                                className="btn" 
+                                style={{ 
+                                  padding: '0.25rem 0.5rem', 
+                                  fontSize: '0.75rem', 
+                                  backgroundColor: req.status === 'PENDING' ? 'var(--warning)' : 'transparent',
+                                  color: req.status === 'PENDING' ? '#ffffff' : 'var(--text-secondary)',
+                                  border: '1px solid var(--border-color)',
+                                  opacity: req.status === 'PENDING' ? 1 : 0.6
+                                }}
+                                onClick={() => handleProcessRequest(req.id, "PENDING")}
+                              >
+                                Set Pending
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ==========================================
+              TAB: FACULTY ALLOCATION
+              ========================================== */}
+          {currentTab === 'allocations' && (
+            <>
+              <div className="page-header">
+                <div>
+                  <h1 className="page-title">Faculty-Subject Mapping (Allocation)</h1>
+                  <p className="page-subtitle">Configure assignments linking faculty staff, specific academic subjects, and semesters/sections.</p>
+                </div>
+              </div>
+
+              {/* Section selection bar */}
+              <div className="filter-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <label style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Select Section:</label>
+                <select 
+                  className="form-control" 
+                  style={{ width: '220px' }} 
+                  value={selectedAllocationSection} 
+                  onChange={(e) => setSelectedAllocationSection(Number(e.target.value))}
+                >
+                  {sections.map(sec => (
+                    <option key={sec.id} value={sec.id}>{sec.name} (Sem {sec.semester})</option>
+                  ))}
+                </select>
+                <div style={{ flex: 1 }}></div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Total Allocations for Section: <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{allocations.length}</span>
+                </div>
+              </div>
+
+              <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem' }}>
+                {/* Left Column: Allocations Table */}
+                <div className="card">
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Active Allocations</h3>
+                  {allocations.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      No faculty mappings configured for this section.
+                    </div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Subject</th>
+                            <th>Faculty Name</th>
+                            <th>Session</th>
+                            <th style={{ width: '80px', textAlign: 'right' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allocations.map((alloc) => (
+                            <tr key={alloc.id}>
+                              <td style={{ fontWeight: 600 }}>{alloc.subjectName || subjects.find(s => s.id === alloc.subjectId)?.name || `Subject (ID: ${alloc.subjectId})`}</td>
+                              <td>{alloc.facultyName || faculties.find(f => f.id === alloc.facultyId)?.name || `Faculty (ID: ${alloc.facultyId})`}</td>
+                              <td><span className="badge badge-normal">{alloc.session}</span></td>
+                              <td style={{ textAlign: 'right' }}>
+                                <button className="icon-btn danger" onClick={() => handleDeleteAllocation(alloc.id)} title="Delete Allocation">
+                                  <Trash size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Add Allocation Form */}
+                <div className="card" style={{ alignSelf: 'start' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Assign Faculty to Subject</h3>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!allocFormFaculty || !allocFormSubject) {
+                      alert("Please select both a faculty member and a subject.");
+                      return;
+                    }
+                    handleCreateAllocation({
+                      facultyId: Number(allocFormFaculty),
+                      subjectId: Number(allocFormSubject),
+                      sectionId: Number(selectedAllocationSection),
+                      session: allocFormSession
+                    });
+                    // Reset fields
+                    setAllocFormFaculty("");
+                    setAllocFormSubject("");
+                  }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label htmlFor="alloc-subject">Select Subject</label>
+                      <select 
+                        id="alloc-subject" 
+                        className="form-control" 
+                        value={allocFormSubject} 
+                        onChange={(e) => setAllocFormSubject(e.target.value)}
+                        required
+                      >
+                        <option value="">-- Choose Subject --</option>
+                        {subjects.map(sub => (
+                          <option key={sub.id} value={sub.id}>{sub.code} - {sub.name} ({sub.type})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="alloc-faculty">Select Faculty Member</label>
+                      <select 
+                        id="alloc-faculty" 
+                        className="form-control" 
+                        value={allocFormFaculty} 
+                        onChange={(e) => setAllocFormFaculty(e.target.value)}
+                        required
+                      >
+                        <option value="">-- Choose Faculty --</option>
+                        {faculties.map(fac => (
+                          <option key={fac.id} value={fac.id}>{fac.name} ({fac.designation})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Live Workload display of selected faculty */}
+                    {faculties.find(f => f.id === Number(allocFormFaculty)) && (() => {
+                      const selFac = faculties.find(f => f.id === Number(allocFormFaculty));
+                      const maxWorkload = selFac.weeklyWorkload || 16;
+                      const currentAllocCount = allocations.filter(a => a.facultyId === selFac.id).length;
+                      const estimatedWorkload = currentAllocCount * 4; // Estimate 4 hrs per mapping if workload not in DB
+                      const displayCurrent = selFac.currentWorkload || estimatedWorkload;
+                      const remaining = maxWorkload - displayCurrent;
+
+                      return (
+                        <div style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '0.75rem', fontSize: '0.8rem' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Selected Faculty Status:</div>
+                          <div>Designation: <span style={{ fontWeight: 500 }}>{selFac.designation}</span></div>
+                          <div>Workload: <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{displayCurrent} hrs</span> / Max: {maxWorkload} hrs</div>
+                          <div style={{ marginTop: '0.15rem', color: remaining < 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>
+                            {remaining < 0 ? `Workload Limit Exceeded! (${Math.abs(remaining)} hrs over)` : `Workload Available: ${remaining} hrs`}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="form-group">
+                      <label htmlFor="alloc-session">Academic Session</label>
+                      <input 
+                        type="text" 
+                        id="alloc-session" 
+                        className="form-control" 
+                        value={allocFormSession} 
+                        onChange={(e) => setAllocFormSession(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+                      Add Allocation
+                    </button>
+                  </form>
                 </div>
               </div>
             </>
@@ -1617,6 +2056,21 @@ export default function App() {
                     </select>
                   </div>
                   
+                  <div className="form-group">
+                    <label>Execution Mode (DP-8)</label>
+                    <select className="form-control">
+                      <option>Automatic Mode (Solver-controlled)</option>
+                      <option>Semi-Automatic Mode (Manual Override Allowed)</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Generation Scope (UC-07, UC-11)</label>
+                    <select className="form-control">
+                      <option>Full Timetable Generation (Clean slate - UC-07)</option>
+                      <option>Partial Regeneration (Solve conflict areas only - UC-11)</option>
+                    </select>
+                  </div>
+                  
                   <button 
                     className="btn btn-primary" 
                     onClick={triggerTimetableGeneration}
@@ -1653,23 +2107,188 @@ export default function App() {
                     </div>
                   )}
 
-                  {genReport && (
-                    <div style={{ 
-                      backgroundColor: 'var(--success-light)', 
-                      border: '1px solid var(--success)', 
-                      padding: '1rem', 
-                      borderRadius: 'var(--radius-lg)',
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '0.75rem',
-                      fontSize: '0.8rem'
-                    }}>
-                      <div>Lectures Placed: <strong>{genReport.placed}</strong></div>
-                      <div>Unresolved Conflicts: <strong>{genReport.conflicts}</strong></div>
-                      <div>Faculty Utilization: <strong>{genReport.facultyUtil}%</strong></div>
-                      <div>Room Utilization: <strong>{genReport.roomUtil}%</strong></div>
-                    </div>
-                  )}
+                  <div style={{ 
+                    backgroundColor: genReport ? 'var(--success-light)' : 'var(--bg-secondary)', 
+                    border: genReport ? '1px solid var(--success)' : '1px solid var(--border-color)', 
+                    padding: '1.25rem', 
+                    borderRadius: 'var(--radius-lg)',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '0.75rem',
+                    fontSize: '0.85rem',
+                    marginTop: '1rem'
+                  }}>
+                    <div>Lectures Placed: <strong>{genReport ? genReport.placed : 0}</strong></div>
+                    <div>Unresolved Conflicts: <strong>{genReport ? genReport.conflicts : 0}</strong></div>
+                    <div>Faculty Utilization: <strong>{genReport ? genReport.facultyUtil : 0}%</strong></div>
+                    <div>Room Utilization: <strong>{genReport ? genReport.roomUtil : 0}%</strong></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Conflict & Alert Center (Conflict Management Screen - 11.14) */}
+              <div className="card" style={{ marginTop: '1.5rem' }}>
+                <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}>
+                  <AlertTriangle size={18} /> Conflict Management & Alert Center (UC-13, UC-19, 11.14)
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                  The optimization engine has detected the following rule violations in the draft timetable.
+                </p>
+
+                <div className="table-responsive">
+                  <table className="table" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>Category</th>
+                        <th>Details</th>
+                        <th>Impact Severity</th>
+                        <th style={{ width: '380px', textAlign: 'right' }}>Resolution Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><span className="badge badge-danger">Faculty Collision</span></td>
+                        <td style={{ fontSize: '0.85rem' }}>
+                          <strong>Prof. Alan Turing</strong> is double-booked for CS-201 (Sec A) and CS-305 (Sec B) on Monday Slot 2.
+                        </td>
+                        <td><span style={{ color: 'var(--danger)', fontWeight: 600 }}>Hard Constraint</span></td>
+                        <td style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => {
+                            alert("Qualified Replacement Faculty found (UC-19):\n1. Dr. Grace Hopper (Available, current workload: 10/16 hrs)\n2. Prof. John von Neumann (Available, current workload: 8/16 hrs)\n\nSelected: Dr. Grace Hopper. Conflict resolved!");
+                          }}>
+                            Find Replacement Faculty (UC-19)
+                          </button>
+                          <button type="button" className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => {
+                            alert("Triggering local solver loop on Mon Slot 2 (UC-11)... Conflict resolved successfully!");
+                          }}>
+                            Partial Regenerate (UC-11)
+                          </button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><span className="badge badge-danger">Room Overlap</span></td>
+                        <td style={{ fontSize: '0.85rem' }}>
+                          Classroom <strong>LT-1</strong> is assigned to both CS-101 (Sec A) and CS-402 (Sec C) on Tuesday Slot 3.
+                        </td>
+                        <td><span style={{ color: 'var(--danger)', fontWeight: 600 }}>Hard Constraint</span></td>
+                        <td style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => {
+                            alert("Available vacant rooms for Tue Slot 3:\n1. Room LT-3 (Capacity: 60, Vacant)\n2. Seminar Hall B (Capacity: 120, Vacant)\n\nSelected: Room LT-3. Conflict resolved!");
+                          }}>
+                            Find Vacant Room
+                          </button>
+                          <button type="button" className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => {
+                            alert("Triggering local solver loop on Tue Slot 3 (UC-11)... Conflict resolved successfully!");
+                          }}>
+                            Partial Regenerate (UC-11)
+                          </button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><span className="badge badge-warning">Workload Limit</span></td>
+                        <td style={{ fontSize: '0.85rem' }}>
+                          <strong>Dr. Grace Hopper</strong> is assigned 18 hours of weekly classes, exceeding her designation limit of 16 hours.
+                        </td>
+                        <td><span style={{ color: 'var(--warning)', fontWeight: 600 }}>Soft Constraint</span></td>
+                        <td style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => {
+                            alert("Workload redistributed! Shifted 2 hours of CS-305 lab mapping to Prof. Alan Turing. Conflict resolved!");
+                          }}>
+                            Redistribute Hours
+                          </button>
+                          <button type="button" className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} onClick={() => {
+                            alert("Triggering local solver loop... Workload balanced successfully!");
+                          }}>
+                            Balance Workload
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Generated Timetable Grid Preview */}
+              <div className="card" style={{ marginTop: '1.5rem' }}>
+                <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Calendar size={18} /> Generated Timetable Schedule Preview
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                  Below is the generated timetable schedule. Faculty collisions and vacant slot reports are synchronized in real time.
+                </p>
+
+                <div className="table-container" style={{ overflowX: 'auto' }}>
+                  <table className="grid-table" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>Day</th>
+                        <th>Slot 1 (09:00 - 10:00)</th>
+                        <th>Slot 2 (10:15 - 11:15)</th>
+                        <th>Lunch Break (11:15 - 12:15)</th>
+                        <th>Slot 3 (12:15 - 01:15)</th>
+                        <th>Slot 4 (01:30 - 02:30)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {["MON", "TUE", "WED"].map(day => (
+                        <tr key={day}>
+                          <td className="day-cell-label">{day}</td>
+                          {[1, 2].map(slot => {
+                            const item = getCellContent(day, slot);
+                            return (
+                              <td key={slot}>
+                                {item ? (
+                                  <div className={`lecture-card ${item.locked ? 'locked' : ''}`} style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', minHeight: '80px' }}>
+                                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{item.subject}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.faculty}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                                      <span>{item.room}</span>
+                                      {item.status !== 'normal' && (
+                                        <span className={`status-pill status-${item.status.toLowerCase()}`} style={{ padding: '0 0.25rem', fontSize: '0.65rem' }}>
+                                          {item.status}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1.5rem 0' }}>Vacant Slot</div>
+                                )}
+                              </td>
+                            );
+                          })}
+                          
+                          {/* Lunch break */}
+                          <td style={{ backgroundColor: 'var(--bg-tertiary)', textAlign: 'center', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', verticalAlign: 'middle' }}>
+                            LUNCH
+                          </td>
+                          
+                          {[3, 4].map(slot => {
+                            const item = getCellContent(day, slot);
+                            return (
+                              <td key={slot}>
+                                {item ? (
+                                  <div className={`lecture-card ${item.locked ? 'locked' : ''}`} style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', minHeight: '80px' }}>
+                                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{item.subject}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.faculty}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                                      <span>{item.room}</span>
+                                      {item.status !== 'normal' && (
+                                        <span className={`status-pill status-${item.status.toLowerCase()}`} style={{ padding: '0 0.25rem', fontSize: '0.65rem' }}>
+                                          {item.status}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1.5rem 0' }}>Vacant Slot</div>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </>
