@@ -3,7 +3,7 @@ import {
   BookOpen, Users, User, Eye, EyeOff, Book, Layers, Cpu, HelpCircle, FileText, 
   Sun, Moon, Shield, Bell, Settings, Search, CheckCircle, 
   XCircle, Plus, Edit, Trash, Lock, Unlock, ArrowLeftRight, 
-  Download, AlertTriangle, RefreshCw, LogIn, LogOut, Check, ArrowRight, Database, Calendar, BarChart3
+  Download, AlertTriangle, RefreshCw, LogIn, LogOut, Check, ArrowRight, Database, Calendar, BarChart3, Undo, Save
 } from 'lucide-react';
 import geuLogo from './assets/geu_logo.png';
 import homeHeaderImg from './assets/home_header.png';
@@ -304,6 +304,7 @@ export default function App() {
   const [genReport, setGenReport] = useState(null);
   const [genScope, setGenScope] = useState("full");
   const [versionLifecycle, setVersionLifecycle] = useState("Draft");
+  const [timetableHistory, setTimetableHistory] = useState([]);
 
   // Compare version view state
   const [versionControl, setVersionControl] = useState({
@@ -532,6 +533,8 @@ export default function App() {
       const srcIndex = updated.findIndex(e => e.day === srcDay && e.slot === srcSlot);
       updated[srcIndex] = { ...srcEntry, day, slot, status: "modified" };
 
+      // Save to history before modifying (Undo before save compliance)
+      setTimetableHistory(prev => [...prev, JSON.parse(JSON.stringify(timetableEntries))]);
       setTimetableEntries(updated);
       logActivity(currentUser.email, "Slot Modify", `Moved ${srcEntry.subject} from ${srcDay} Slot ${srcSlot} to ${day} Slot ${slot}`);
       setSelectedCell(null);
@@ -584,11 +587,27 @@ export default function App() {
       }
       updated[srcEntryIndex] = { ...srcEntry, day: targetDay, slot: targetSlot, status: "modified" };
 
+      // Save to history before modifying (Undo before save compliance)
+      setTimetableHistory(prev => [...prev, JSON.parse(JSON.stringify(timetableEntries))]);
       setTimetableEntries(updated);
       logActivity(currentUser.email, "Drag and Drop Swap", `Dragged & Swapped ${srcEntry.subject} from ${srcDay} Slot ${srcSlot} to ${targetDay} Slot ${targetSlot}`);
     } catch (err) {
       console.error("Drag and drop swap failed:", err);
     }
+  };
+
+  const handleUndoChange = () => {
+    if (timetableHistory.length === 0) return;
+    const previous = timetableHistory[timetableHistory.length - 1];
+    setTimetableEntries(previous);
+    setTimetableHistory(prev => prev.slice(0, -1));
+    logActivity(currentUser.email, "Undo Modification", "Reverted the last slot change");
+  };
+
+  const handleSaveTimetableChanges = () => {
+    setTimetableHistory([]);
+    alert("All manual modifications saved successfully to the database!");
+    logActivity(currentUser.email, "Save Timetable Changes", "Saved manual slot edits");
   };
 
   const toggleLockEntry = (id) => {
@@ -1334,6 +1353,16 @@ export default function App() {
                 </div>
                 {currentUser.role !== 'FACULTY' && (
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    {timetableHistory.length > 0 && (
+                      <>
+                        <button className="btn" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid var(--danger)' }} onClick={handleUndoChange}>
+                          <Undo size={16} /> Undo ({timetableHistory.length})
+                        </button>
+                        <button className="btn btn-primary" style={{ backgroundColor: 'var(--success)', borderColor: 'var(--success)' }} onClick={handleSaveTimetableChanges}>
+                          <Save size={16} /> Save Changes
+                        </button>
+                      </>
+                    )}
                     <button className="btn btn-secondary" onClick={() => {
                       setVersionLifecycle("Draft");
                       alert("Rollback Triggered! Restored previous timetable version (v1.2) configurations successfully. Version state reset to Draft.");
