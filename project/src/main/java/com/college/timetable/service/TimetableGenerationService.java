@@ -25,6 +25,14 @@ public class TimetableGenerationService {
     private final ResourceRepository resourceRepo;
 
     public GenerationResultDto generate(Long semesterId, String session) {
+        // Clear all unlocked entries for this session & semester first (Timetable Locking compliance)
+        List<TimetableEntry> existingEntries = entryRepo.findBySemesterIdAndSession(semesterId, session);
+        for (TimetableEntry entry : existingEntries) {
+            if (!entry.isLocked()) {
+                entryRepo.delete(entry);
+            }
+        }
+
         // Using your repository method directly since it exists!
         List<SubjectAllocation> allocations = allocationRepository.findBySemesterIdAndSession(semesterId, session);
         List<ConflictDto> conflicts = new ArrayList<>();

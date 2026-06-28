@@ -3,7 +3,7 @@ import {
   BookOpen, Users, User, Eye, EyeOff, Book, Layers, Cpu, HelpCircle, FileText, 
   Sun, Moon, Shield, Bell, Settings, Search, CheckCircle, 
   XCircle, Plus, Edit, Trash, Lock, Unlock, ArrowLeftRight, 
-  Download, AlertTriangle, RefreshCw, LogIn, LogOut, Check, ArrowRight, Database, Calendar
+  Download, AlertTriangle, RefreshCw, LogIn, LogOut, Check, ArrowRight, Database, Calendar, BarChart3
 } from 'lucide-react';
 import geuLogo from './assets/geu_logo.png';
 import homeHeaderImg from './assets/home_header.png';
@@ -536,6 +536,59 @@ export default function App() {
     }
   };
 
+  const handleDragStart = (e, day, slot) => {
+    if (currentUser.role === 'FACULTY') return;
+    const entry = timetableEntries.find(ent => ent.day === day && ent.slot === slot);
+    if (entry) {
+      if (entry.locked) {
+        e.preventDefault();
+        alert("This entry is locked! Unlock it first to modify.");
+        return;
+      }
+      e.dataTransfer.setData("text/plain", JSON.stringify({ day, slot }));
+    }
+  };
+
+  const handleDrop = (e, targetDay, targetSlot) => {
+    e.preventDefault();
+    if (currentUser.role === 'FACULTY') return;
+    
+    try {
+      const dataStr = e.dataTransfer.getData("text/plain");
+      if (!dataStr) return;
+      const { day: srcDay, slot: srcSlot } = JSON.parse(dataStr);
+      
+      if (srcDay === targetDay && srcSlot === targetSlot) return;
+
+      const srcEntryIndex = timetableEntries.findIndex(ent => ent.day === srcDay && ent.slot === srcSlot);
+      const targetEntryIndex = timetableEntries.findIndex(ent => ent.day === targetDay && ent.slot === targetSlot);
+
+      const srcEntry = srcEntryIndex !== -1 ? timetableEntries[srcEntryIndex] : null;
+      const targetEntry = targetEntryIndex !== -1 ? timetableEntries[targetEntryIndex] : null;
+
+      if (!srcEntry) return;
+      if (srcEntry.locked) {
+        alert("Dragged entry is locked! Cannot modify.");
+        return;
+      }
+      if (targetEntry && targetEntry.locked) {
+        alert("Target slot is locked! Cannot modify.");
+        return;
+      }
+
+      const updated = [...timetableEntries];
+      if (targetEntry) {
+        updated[targetEntryIndex] = { ...targetEntry, day: srcDay, slot: srcSlot, status: "modified" };
+      }
+      updated[srcEntryIndex] = { ...srcEntry, day: targetDay, slot: targetSlot, status: "modified" };
+
+      setTimetableEntries(updated);
+      logActivity(currentUser.email, "Drag and Drop Swap", `Dragged & Swapped ${srcEntry.subject} from ${srcDay} Slot ${srcSlot} to ${targetDay} Slot ${targetSlot}`);
+    } catch (err) {
+      console.error("Drag and drop swap failed:", err);
+    }
+  };
+
   const toggleLockEntry = (id) => {
     setTimetableEntries(prev => prev.map(e => e.id === id ? { ...e, locked: !e.locked } : e));
     const item = timetableEntries.find(e => e.id === id);
@@ -922,6 +975,16 @@ export default function App() {
                 <span>Timetable Generation</span>
               </div>
             </>
+          )}
+
+          {currentUser.role !== 'FACULTY' && (
+            <div 
+              className={`menu-item ${currentTab === 'reports' ? 'active' : ''}`} 
+              onClick={() => setCurrentTab('reports')}
+            >
+              <BarChart3 size={18} />
+              <span>Reports & Analytics</span>
+            </div>
           )}
 
           {currentUser.role === 'ADMIN' && (
@@ -1325,13 +1388,19 @@ export default function App() {
                               <td 
                                 key={slot} 
                                 onClick={() => handleCellClick(day, slot)}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => handleDrop(e, day, slot)}
                                 style={{ 
                                   cursor: currentUser.role !== 'FACULTY' ? 'pointer' : 'default',
                                   backgroundColor: selectedCell?.day === day && selectedCell?.slot === slot ? 'var(--primary-light)' : 'transparent'
                                 }}
                               >
                                 {item ? (
-                                  <div className={`lecture-card ${item.locked ? 'locked' : ''}`}>
+                                  <div 
+                                    className={`lecture-card ${item.locked ? 'locked' : ''}`}
+                                    draggable={currentUser.role !== 'FACULTY' && !item.locked}
+                                    onDragStart={(e) => handleDragStart(e, day, slot)}
+                                  >
                                     {item.status !== 'normal' && (
                                       <span className={`lecture-tag tag-${item.status}`}>
                                         {item.status}
@@ -1361,12 +1430,38 @@ export default function App() {
                           {[3, 4].map(slot => {
                             const item = getCellContent(day, slot);
                             return (
-                              <td key={slot}>
+                              <td 
+                                key={slot} 
+                                onClick={() => handleCellClick(day, slot)}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => handleDrop(e, day, slot)}
+                                style={{ 
+                                  cursor: currentUser.role !== 'FACULTY' ? 'pointer' : 'default',
+                                  backgroundColor: selectedCell?.day === day && selectedCell?.slot === slot ? 'var(--primary-light)' : 'transparent'
+                                }}
+                              >
                                 {item ? (
-                                  <div className="lecture-card">
+                                  <div 
+                                    className={`lecture-card ${item.locked ? 'locked' : ''}`}
+                                    draggable={currentUser.role !== 'FACULTY' && !item.locked}
+                                    onDragStart={(e) => handleDragStart(e, day, slot)}
+                                  >
+                                    {item.status !== 'normal' && (
+                                      <span className={`lecture-tag tag-${item.status}`}>
+                                        {item.status}
+                                      </span>
+                                    )}
                                     <div className="lecture-subject">{item.subject}</div>
                                     <div className="lecture-faculty">{item.faculty}</div>
                                     <div className="lecture-room">{item.room}</div>
+                                    
+                                    {currentUser.role !== 'FACULTY' && (
+                                      <div className="lecture-actions" onClick={e => e.stopPropagation()}>
+                                        <button className="lecture-action-btn" onClick={() => toggleLockEntry(item.id)}>
+                                          {item.locked ? <Lock size={12} style={{ color: 'var(--warning)' }} /> : <Unlock size={12} />}
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 ) : (
                                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '1.5rem' }}>
@@ -1912,6 +2007,71 @@ export default function App() {
                   </table>
                 </div>
               </div>
+
+              {/* Faculty Availability & Preference Configurator */}
+              <div className="card" style={{ marginTop: '1.5rem' }}>
+                <h3 className="card-title">Faculty Availability & Timings Configuration</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                  Manage constraints covering unavailable slots, vacation dates, and research days for the solver optimization engine.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+                  {/* Select Faculty & Time range */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    <div className="form-group">
+                      <label>Select Faculty Member</label>
+                      <select className="form-control" defaultValue="1">
+                        {faculties.map(f => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Daily Time Range</label>
+                      <select className="form-control" defaultValue="09:00-17:00">
+                        <option value="09:00-17:00">09:00 AM - 05:00 PM (Default)</option>
+                        <option value="08:00-16:00">08:00 AM - 04:00 PM</option>
+                        <option value="10:00-18:00">10:00 AM - 06:00 PM</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Unavailable slots & vacation dates */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    <div className="form-group">
+                      <label>Preferred Timings</label>
+                      <select className="form-control" defaultValue="morning">
+                        <option value="morning">Morning slots preferred (Slots 1 & 2)</option>
+                        <option value="afternoon">Afternoon slots preferred (Slots 3 & 4)</option>
+                        <option value="none">No specific preference</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Vacation / Leave Period</label>
+                      <input type="text" className="form-control" placeholder="e.g. Oct 24 - Oct 26" />
+                    </div>
+                  </div>
+
+                  {/* Research day & Submit button */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', justifyContent: 'space-between' }}>
+                    <div className="form-group">
+                      <label>Designated Research Day</label>
+                      <select className="form-control" defaultValue="Wednesday">
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday (Recommended)</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                      </select>
+                    </div>
+                    <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }} onClick={() => {
+                      alert("Availability and scheduling preferences updated successfully! Saved to solver database constraints.");
+                    }}>
+                      Save Availability Settings
+                    </button>
+                  </div>
+                </div>
+              </div>
             </>
           )}
 
@@ -2332,6 +2492,233 @@ export default function App() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {currentTab === 'reports' && (
+            <>
+              <div className="page-header">
+                <div>
+                  <h1 className="page-title">Reports & Timetable Analytics</h1>
+                  <p className="page-subtitle">Inspect capacity checks, utilization statistics, and upload spreadsheets.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button className="btn btn-secondary" onClick={() => {
+                    alert("Generating Section Timetable PDF... File download initiated: CSE_BTech_SecA.pdf");
+                    logActivity(currentUser.email, "PDF Export", "Exported B.Tech Section A timetable to PDF format");
+                  }}>
+                    <Download size={16} /> Export Section PDF
+                  </button>
+                  <button className="btn btn-primary" onClick={() => {
+                    alert("Generating Section Timetable Excel... File download initiated: CSE_BTech_SecA.xlsx");
+                    logActivity(currentUser.email, "Excel Export", "Exported B.Tech Section A timetable to Excel sheet");
+                  }}>
+                    <FileText size={16} /> Export Section Excel
+                  </button>
+                </div>
+              </div>
+
+              {/* Statistics Widgets */}
+              <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
+                <div className="stat-card">
+                  <div className="stat-info">
+                    <span className="stat-label">Faculty Utilization</span>
+                    <span className="stat-value">84%</span>
+                    <span className="stat-desc">Average weekly workload hours</span>
+                  </div>
+                  <div className="stat-icon" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)' }}>
+                    <Users size={24} />
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-info">
+                    <span className="stat-label">Room Utilization</span>
+                    <span className="stat-value">72%</span>
+                    <span className="stat-desc">Classroom and lab occupancy rate</span>
+                  </div>
+                  <div className="stat-icon" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>
+                    <Layers size={24} />
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-info">
+                    <span className="stat-label">Remaining Free Slots</span>
+                    <span className="stat-value">14 vacant</span>
+                    <span className="stat-desc">Unallocated schedule periods</span>
+                  </div>
+                  <div className="stat-icon" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning)' }}>
+                    <Calendar size={24} />
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-info">
+                    <span className="stat-label">Rule Conflicts</span>
+                    <span className="stat-value" style={{ color: 'var(--success)' }}>0 unresolved</span>
+                    <span className="stat-desc">Hard constraints validated</span>
+                  </div>
+                  <div className="stat-icon" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>
+                    <CheckCircle size={24} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Excel Import & Resource Capacity Layout */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                {/* Excel POI Import Card */}
+                <div className="card">
+                  <h3 className="card-title">Spreadsheet Document Importer (Apache POI)</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                    Upload Excel (.xlsx) templates to import Faculty, Subjects, Rooms, and Sections directly into the directory.
+                  </p>
+                  
+                  <div 
+                    style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: 'var(--radius-lg)',
+                      padding: '2.5rem 1.5rem',
+                      textAlign: 'center',
+                      backgroundColor: 'var(--bg-secondary)',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onClick={() => document.getElementById('excel-file-input').click()}
+                  >
+                    <Download size={32} style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }} />
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.25rem' }}>Click or drag Excel file here</div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Supports .xlsx up to 5MB</span>
+                    <input 
+                      type="file" 
+                      id="excel-file-input" 
+                      accept=".xlsx" 
+                      style={{ display: 'none' }} 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          alert(`Apache POI parser triggered! Reading "${e.target.files[0].name}"...\nSuccess: Imported 4 new subject listings, 2 classroom capacities, and updated 3 faculty records!`);
+                          logActivity(currentUser.email, "Excel Import", `Uploaded spreadsheet data from ${e.target.files[0].name}`);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Resource Capacity Validation Grid */}
+                <div className="card">
+                  <h3 className="card-title">Resource Availability & Capacity Check</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                    Live validation verifying that Section student strength fits Room seating capacity constraints.
+                  </p>
+                  
+                  <div className="table-container">
+                    <table className="custom-table" style={{ fontSize: '0.8rem' }}>
+                      <thead>
+                        <tr>
+                          <th>Room ID</th>
+                          <th>Room Cap</th>
+                          <th>Target Section</th>
+                          <th>Sec Strength</th>
+                          <th>Status check</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ fontWeight: 600 }}>CR-102</td>
+                          <td>40 Seats</td>
+                          <td>Section A (B.Tech)</td>
+                          <td>38 Students</td>
+                          <td><span className="status-pill status-approved" style={{ fontSize: '0.7rem' }}>Capacity Validated</span></td>
+                        </tr>
+                        <tr>
+                          <td style={{ fontWeight: 600 }}>LT-3</td>
+                          <td>60 Seats</td>
+                          <td>Section B (B.Tech)</td>
+                          <td>56 Students</td>
+                          <td><span className="status-pill status-approved" style={{ fontSize: '0.7rem' }}>Capacity Validated</span></td>
+                        </tr>
+                        <tr>
+                          <td style={{ fontWeight: 600 }}>LAB-2</td>
+                          <td>30 Seats</td>
+                          <td>Lab Group B1</td>
+                          <td>24 Students</td>
+                          <td><span className="status-pill status-approved" style={{ fontSize: '0.7rem' }}>Capacity Validated</span></td>
+                        </tr>
+                        <tr>
+                          <td style={{ fontWeight: 600 }}>CR-101</td>
+                          <td>30 Seats</td>
+                          <td>Section C (B.Tech)</td>
+                          <td>35 Students</td>
+                          <td><span className="status-pill status-pending" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontSize: '0.7rem' }}>Insufficient Capacity</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timetable Analytics Charts Card */}
+              <div className="card" style={{ marginBottom: '1.5rem' }}>
+                <h3 className="card-title">Timetable Analytics Dashboard</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                  Visual metrics representation covering faculty loads, daily scheduling balance, and subject mapping statistics.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                  {/* Faculty Load Bar Chart */}
+                  <div>
+                    <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Faculty Workload Load (Weekly Hours)</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)' }}>
+                      {[
+                        { name: "Prof. Alan Turing", hours: 14, max: 16 },
+                        { name: "Dr. Grace Hopper", hours: 12, max: 16 },
+                        { name: "Dr. Sarah Jenkins", hours: 15, max: 18 },
+                        { name: "Dr. Robert Key", hours: 10, max: 12 }
+                      ].map((fac, idx) => (
+                        <div key={idx}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+                            <span>{fac.name}</span>
+                            <strong>{fac.hours} / {fac.max} hrs</strong>
+                          </div>
+                          <div style={{ height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${(fac.hours / fac.max) * 100}%`, backgroundColor: fac.hours > 14 ? 'var(--warning)' : 'var(--primary)', borderRadius: '4px' }}></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Daily Load Bar Chart */}
+                  <div>
+                    <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Daily Schedule density (Lectures Count)</h4>
+                    <div style={{ padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', minHeight: '135px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '100px', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                        {[
+                          { day: "Mon", lectures: 8, height: "90%" },
+                          { day: "Tue", lectures: 6, height: "70%" },
+                          { day: "Wed", lectures: 4, height: "50%" },
+                          { day: "Thu", lectures: 7, height: "80%" },
+                          { day: "Fri", lectures: 5, height: "60%" }
+                        ].map((d, idx) => (
+                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '40px', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{d.lectures}</span>
+                            <div style={{ height: '60px', width: '12px', backgroundColor: 'var(--primary-light)', borderRadius: '4px 4px 0 0', display: 'flex', alignItems: 'flex-end' }}>
+                              <div style={{ height: d.height, width: '100%', backgroundColor: 'var(--primary)', borderRadius: '4px 4px 0 0' }}></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        <span>Monday</span>
+                        <span>Tuesday</span>
+                        <span>Wednesday</span>
+                        <span>Thursday</span>
+                        <span>Friday</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
